@@ -49,15 +49,7 @@ public class ShowProductsUseCase {
                         List.of(
                                 new ClientTupleKey()
                                         .user(user)
-                                        .relation("read")
-                                        ._object(objectId),
-                                new ClientTupleKey()
-                                        .user(user)
-                                        .relation("write")
-                                        ._object(objectId),
-                                new ClientTupleKey()
-                                        .user(user)
-                                        .relation("delete")
+                                        .relation("owner")
                                         ._object(objectId)
                         )
                     )

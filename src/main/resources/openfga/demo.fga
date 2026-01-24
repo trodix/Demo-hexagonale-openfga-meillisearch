@@ -10,6 +10,7 @@ type entity
 
 type product
   relations
-    define read: [user]
-    define write: [user]
-    define delete: [user]
+    define owner: [user]
+    define read: [user] or owner
+    define write: [user] or owner
+    define delete: [user] or owner
