@@ -4,14 +4,14 @@ import com.trodix.demo.application.exceptions.ProductException;
 import com.trodix.demo.domain.model.Product;
 import com.trodix.demo.domain.port.ProductsProvider;
 import dev.openfga.sdk.api.client.OpenFgaClient;
-import dev.openfga.sdk.api.client.model.ClientReadRequest;
-import dev.openfga.sdk.api.client.model.ClientTupleKey;
-import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
+import dev.openfga.sdk.api.client.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,10 +25,42 @@ public class ShowProductsUseCase {
     private final AuthenticationService authService;
 
     public List<Product> showProducts() {
-        List<Product> products = productsProvider.getProducts();
-        log.debug("Products count: {}", products.size());
+        String user = "user:" + authService.getUsername();
 
-        return products;
+        try {
+            ClientCheckRequest checkRequest = new ClientCheckRequest()
+                    .user(user)
+                    .relation("read")
+                    ._object("entity:product");
+
+            boolean hasGlobalAccess = Boolean.TRUE.equals(fgaClient.check(checkRequest).get().getAllowed());
+
+            if (hasGlobalAccess) {
+                log.debug("User {} has global read access to all products", user);
+                return productsProvider.getProducts();
+            }
+
+            ClientListObjectsRequest listObjectsRequest = new ClientListObjectsRequest()
+                    .user(user)
+                    .relation("read")
+                    .type("product");
+
+            Set<String> allowedProductIds = fgaClient.listObjects(listObjectsRequest)
+                    .get()
+                    .getObjects()
+                    .stream()
+                    .map(obj -> obj.replace("product:", ""))
+                    .collect(Collectors.toSet());
+
+            log.debug("User {} has read access to {} products", user, allowedProductIds.size());
+
+            return productsProvider.getProducts().stream()
+                    .filter(product -> allowedProductIds.contains(product.getId().toString()))
+                    .toList();
+
+        } catch (Exception e) {
+            throw new ProductException("Error listing products for user %s", e, user);
+        }
     }
 
     public Product getProduct(Long id) {

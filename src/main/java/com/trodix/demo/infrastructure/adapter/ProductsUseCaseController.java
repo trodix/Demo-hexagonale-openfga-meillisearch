@@ -20,7 +20,6 @@ public class ProductsUseCaseController implements ShowProductsUseCaseProvider {
 
     @GetMapping(value = "/products", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(value = HttpStatus.OK)
-    @PreAuthorize("@fga.check('entity', 'product', 'read', 'user')")
     @Override
     public List<Product> showProducts() {
         return showProductsUseCase.showProducts();
