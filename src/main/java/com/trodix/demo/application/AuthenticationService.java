@@ -7,6 +7,7 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -64,6 +65,7 @@ public class AuthenticationService {
 
             return Stream.of(memberAssoc, adminAssoc)
                     .flatMap(List::stream)
+                    .map(obj -> obj.replace("tenant:", ""))
                     .toList();
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -72,6 +74,32 @@ public class AuthenticationService {
 
     public boolean isTenantMember(String tenantId) {
         return getAssociatedTenants().contains(tenantId);
+    }
+
+    /**
+     * Store the current tenant id in the Authentication details so it is available
+     * through the SecurityContext for the duration of the request.
+     */
+    public void setCurrentTenant(String tenantId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return;
+
+        UsernamePasswordAuthenticationToken newAuth = new UsernamePasswordAuthenticationToken(
+                auth.getPrincipal(), auth.getCredentials(), auth.getAuthorities()
+        );
+        newAuth.setDetails(tenantId);
+        SecurityContextHolder.getContext().setAuthentication(newAuth);
+    }
+
+    /**
+     * Read the current tenant id from Authentication details.
+     */
+    public String getTenant() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof String) {
+            return (String) auth.getDetails();
+        }
+        return null;
     }
 
 }

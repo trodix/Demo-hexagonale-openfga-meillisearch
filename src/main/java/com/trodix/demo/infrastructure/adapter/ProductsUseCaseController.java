@@ -1,5 +1,6 @@
 package com.trodix.demo.infrastructure.adapter;
 
+import com.trodix.demo.application.AuthenticationService;
 import com.trodix.demo.application.ShowProductsUseCase;
 import com.trodix.demo.domain.model.Product;
 import lombok.RequiredArgsConstructor;
@@ -16,38 +17,41 @@ import java.util.List;
 public class ProductsUseCaseController {
 
     private final ShowProductsUseCase showProductsUseCase;
+    private final AuthenticationService auth;
 
-    @GetMapping(value = "tenant/{tenantId}/products", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "products", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(value = HttpStatus.OK)
-    public List<Product> showProducts(@PathVariable String tenantId) {
+    public List<Product> showProducts() {
+        String tenantId = auth.getTenant();
         return showProductsUseCase.showProducts(tenantId);
     }
 
-    @GetMapping(value = "tenant/{tenantId}/products/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "products/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(value = HttpStatus.OK)
-    @PreAuthorize("@fga.check('entity', #tenantId + '/product', 'read', 'user')")
-    public Product getProduct(@PathVariable String tenantId, @PathVariable Long id) {
+    @PreAuthorize("@fga.check('entity', @authenticationService.tenant() + '/product', 'read', 'user')")
+    public Product getProduct(@PathVariable Long id) {
         return showProductsUseCase.getProduct(id);
     }
 
-    @PostMapping(value = "tenant/{tenantId}/products", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "products", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(value = HttpStatus.CREATED)
-    @PreAuthorize("@fga.check('entity', #tenantId + '/product', 'write', 'user')")
-    public Product createProduct(@PathVariable String tenantId, @RequestBody Product product) {
+    @PreAuthorize("@fga.check('entity', @authenticationService.tenant() + '/product', 'write', 'user')")
+    public Product createProduct(@RequestBody Product product) {
+        String tenantId = auth.getTenant();
         return showProductsUseCase.createProduct(tenantId, product);
     }
 
-    @PutMapping(value = "tenant/{tenantId}/products", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "products", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(value = HttpStatus.OK)
-    @PreAuthorize("@fga.check('entity', #tenantId + '/product', 'write', 'user')")
-    public Product updateProduct(@PathVariable String tenantId, @RequestBody Product product) {
+    @PreAuthorize("@fga.check('entity', @authenticationService.tenant() + '/product', 'write', 'user')")
+    public Product updateProduct(@RequestBody Product product) {
         return showProductsUseCase.updateProduct(product);
     }
 
-    @DeleteMapping(value = "tenant/{tenantId}/products/{id}")
+    @DeleteMapping(value = "products/{id}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @PreAuthorize("@fga.check('entity', #tenantId + '/product', 'write', 'user')")
-    public void deleteProduct(@PathVariable String tenantId, @PathVariable Long id) {
+    @PreAuthorize("@fga.check('entity', @authenticationService.tenant() + '/product', 'write', 'user')")
+    public void deleteProduct(@PathVariable Long id) {
         showProductsUseCase.deleteProduct(id);
     }
 
