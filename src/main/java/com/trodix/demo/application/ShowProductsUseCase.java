@@ -24,19 +24,29 @@ public class ShowProductsUseCase {
 
     private final AuthenticationService authService;
 
-    public List<Product> showProducts() {
+    public List<Product> showProducts(String tenantId) {
+        if (authService.isSystemUser()) {
+            log.debug("System user has full access to all products");
+            return productsProvider.getProducts();
+        }
+
+        return getFilteredProducts(tenantId);
+    }
+
+    private List<Product> getFilteredProducts(String tenantId) {
         String user = "user:" + authService.getUsername();
+        String entityObject = "entity:" + tenantId + "/product";
 
         try {
             ClientCheckRequest checkRequest = new ClientCheckRequest()
                     .user(user)
                     .relation("read")
-                    ._object("entity:product");
+                    ._object(entityObject);
 
             boolean hasGlobalAccess = Boolean.TRUE.equals(fgaClient.check(checkRequest).get().getAllowed());
 
             if (hasGlobalAccess) {
-                log.debug("User {} has global read access to all products", user);
+                log.debug("User {} has global read access to all products in tenant {}", user, tenantId);
                 return productsProvider.getProducts();
             }
 
@@ -59,7 +69,7 @@ public class ShowProductsUseCase {
                     .toList();
 
         } catch (Exception e) {
-            throw new ProductException("Error listing products for user %s", e, user);
+            throw new ProductException("Error listing products for user %s in tenant %s", e, user, tenantId);
         }
     }
 
@@ -69,26 +79,31 @@ public class ShowProductsUseCase {
     }
 
     //@Transactional
-    public Product createProduct(Product product) {
-        log.debug("Creating product: {}", product);
+    public Product createProduct(String tenantId, Product product) {
+        log.debug("Creating product: {} in tenant: {}", product, tenantId);
 
         try {
             Product createdProduct = productsProvider.createProduct(product);
-            String objectId = "product:" + createdProduct.getId();
+            String productObject = "product:" + createdProduct.getId();
+            String entityObject = "entity:" + tenantId + "/product";
             String user = "user:" + authService.getUsername();
             fgaClient
                     .writeTuples(
                         List.of(
                                 new ClientTupleKey()
+                                        .user(entityObject)
+                                        .relation("parent")
+                                        ._object(productObject),
+                                new ClientTupleKey()
                                         .user(user)
                                         .relation("owner")
-                                        ._object(objectId)
+                                        ._object(productObject)
                         )
                     )
                     .get();
             return createdProduct;
         } catch (Exception e) {
-            throw new ProductException("Error creating product %s", e, product.getId());
+            throw new ProductException("Error creating product %s in tenant %s", e, product.getId(), tenantId);
         }
     }
 

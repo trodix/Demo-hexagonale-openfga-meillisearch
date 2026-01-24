@@ -3,14 +3,22 @@ model
 
 type user
 
+type tenant
+  relations
+    define member: [user]
+    define admin: [user]
+
 type entity
   relations
-    define write: [user]
-    define read: [user]
+    define parent: [tenant]
+    define read: [user] or member from parent or admin from parent
+    define write: [user] or admin from parent
+    define delete: [user] or admin from parent
 
 type product
   relations
+    define parent: [entity]
     define owner: [user]
-    define read: [user] or owner
-    define write: [user] or owner
-    define delete: [user] or owner
+    define read: [user] or owner or read from parent
+    define write: [user] or owner or write from parent
+    define delete: [user] or owner or delete from parent
