@@ -1,0 +1,21 @@
+meta {
+  name: delete one product
+  type: http
+  seq: 5
+}
+
+delete {
+  url: http://localhost:8000/api/products/1
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: admin
+  password: password
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

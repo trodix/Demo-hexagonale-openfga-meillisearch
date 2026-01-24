@@ -1,0 +1,21 @@
+meta {
+  name: get one product
+  type: http
+  seq: 3
+}
+
+get {
+  url: http://localhost:8000/api/products/1
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: admin
+  password: password
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

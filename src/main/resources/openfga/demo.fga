@@ -1,0 +1,15 @@
+model
+  schema 1.1
+
+type user
+
+type entity
+  relations
+    define write: [user]
+    define read: [user]
+
+type product
+  relations
+    define read: [user]
+    define write: [user]
+    define delete: [user]
