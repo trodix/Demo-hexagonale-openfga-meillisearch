@@ -35,6 +35,11 @@ public class MeilisearchConfig {
         return new Client(config);
     }
 
+    @Bean
+    ObjectMapper meilisearchReadObjectMapper() {
+        return new Jackson3JsonHandler().mapper;
+    }
+
     /**
      * Rend compatible meilisearch Client avec Jackson 3.
      * <p>

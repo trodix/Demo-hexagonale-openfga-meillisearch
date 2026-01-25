@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @RequiredArgsConstructor
-public class MeilisearchProductsAdapter implements ProductsProvider {
+public class ProductsCrudMeilisearchAdapter implements ProductsProvider {
 
     public static final String PRODUCTS_INDEX = "products";
 

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.trodix.demo.infrastructure.adapter.MeilisearchProductsAdapter.PRODUCTS_INDEX;
+import static com.trodix.demo.infrastructure.adapter.ProductsCrudMeilisearchAdapter.PRODUCTS_INDEX;
 
 @Service
 @RequiredArgsConstructor

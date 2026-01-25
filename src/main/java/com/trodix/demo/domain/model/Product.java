@@ -1,12 +1,13 @@
 package com.trodix.demo.domain.model;
 
+import com.trodix.demo.domain.search.entity.Entity;
 import lombok.Data;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
 @Data
-public class Product {
+public class Product extends Entity {
 
     private Long id;
     private String title;
