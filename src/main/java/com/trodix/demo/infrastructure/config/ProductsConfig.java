@@ -1,11 +1,13 @@
-package com.trodix.demo.application.config;
+package com.trodix.demo.infrastructure.config;
 
 import com.meilisearch.sdk.Client;
+import com.trodix.demo.domain.model.Product;
+import com.trodix.demo.domain.model.ProductQuery;
 import com.trodix.demo.domain.port.ProductsProvider;
+import com.trodix.demo.adapter.out.DummyjsonProductsAdapter;
+import com.trodix.demo.adapter.out.ProductsCrudMeilisearchAdapter;
+import com.trodix.demo.adapter.out.ProductsMeilisearchSearchAdapter;
 import com.trodix.demo.domain.port.SearchProvider;
-import com.trodix.demo.infrastructure.adapter.DummyjsonProductsAdapter;
-import com.trodix.demo.infrastructure.adapter.ProductsCrudMeilisearchAdapter;
-import com.trodix.demo.infrastructure.adapter.ProductsMeilisearchSearchAdapter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,7 +33,7 @@ public class ProductsConfig {
     }
 
     @Bean
-    SearchProvider meilisearchSearchProductProvider(Client msClient, @Qualifier("meilisearchReadObjectMapper") ObjectMapper mapper) {
+    SearchProvider<Product, ProductQuery> meilisearchSearchProductProvider(Client msClient, @Qualifier("meilisearchReadObjectMapper") ObjectMapper mapper) {
         return new ProductsMeilisearchSearchAdapter(msClient, mapper);
     }
 

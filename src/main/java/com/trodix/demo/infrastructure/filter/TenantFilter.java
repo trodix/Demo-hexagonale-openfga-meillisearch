@@ -1,9 +1,8 @@
 package com.trodix.demo.infrastructure.filter;
 
-import com.trodix.demo.application.AuthenticationService;
+import com.trodix.demo.adapter.in.security.SpringAuthenticationAdapter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.security.core.Authentication;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,10 +15,10 @@ public class TenantFilter extends OncePerRequestFilter {
 
     public static final String TENANT_HEADER = "X-Tenant-Id";
 
-    private final AuthenticationService authenticationService;
+    private final SpringAuthenticationAdapter springAuthenticationAdapter;
 
-    public TenantFilter(AuthenticationService authenticationService) {
-        this.authenticationService = authenticationService;
+    public TenantFilter(SpringAuthenticationAdapter springAuthenticationAdapter) {
+        this.springAuthenticationAdapter = springAuthenticationAdapter;
     }
 
     @Override
@@ -40,7 +39,7 @@ public class TenantFilter extends OncePerRequestFilter {
             }
 
             // Ensure user is authenticated
-            var optAuth = authenticationService.getAuthentication();
+            var optAuth = springAuthenticationAdapter.getAuthentication();
             if (optAuth.isEmpty()) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json;charset=UTF-8");
@@ -50,7 +49,7 @@ public class TenantFilter extends OncePerRequestFilter {
             }
 
             // Verify membership to tenant and store tenant in security context
-            if (!authenticationService.isTenantMember(tenantId)) {
+            if (!springAuthenticationAdapter.isTenantMember(tenantId)) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType("application/json;charset=UTF-8");
                 String msg = "{\"error\": \"L'utilisateur n'est pas membre du tenant fourni\"}";
@@ -58,7 +57,7 @@ public class TenantFilter extends OncePerRequestFilter {
                 return;
             }
 
-            authenticationService.setCurrentTenant(tenantId);
+            springAuthenticationAdapter.setCurrentTenant(tenantId);
         }
 
         filterChain.doFilter(request, response);

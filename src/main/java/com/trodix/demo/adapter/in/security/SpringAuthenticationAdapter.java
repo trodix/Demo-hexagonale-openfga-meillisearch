@@ -1,5 +1,6 @@
-package com.trodix.demo.application;
+package com.trodix.demo.adapter.in.security;
 
+import com.trodix.demo.application.port.security.AuthenticationAdapter;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientListObjectsRequest;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
-public class AuthenticationService {
+public class SpringAuthenticationAdapter implements AuthenticationAdapter {
 
     public static final String SYSTEM_USER = "system";
 

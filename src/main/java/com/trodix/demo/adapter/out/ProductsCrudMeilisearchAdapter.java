@@ -1,4 +1,4 @@
-package com.trodix.demo.infrastructure.adapter;
+package com.trodix.demo.adapter.out;
 
 import com.meilisearch.sdk.Client;
 import com.trodix.demo.domain.model.Product;

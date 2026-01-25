@@ -1,4 +1,4 @@
-package com.trodix.demo.infrastructure.utils;
+package com.trodix.demo.adapter.out;
 
 import com.trodix.demo.domain.model.Product;
 import com.trodix.demo.domain.search.pagination.Page;

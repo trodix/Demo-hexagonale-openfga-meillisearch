@@ -1,4 +1,4 @@
-package com.trodix.demo.application;
+package com.trodix.demo.application.usecase;
 
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.trodix.demo.infrastructure.adapter.ProductsCrudMeilisearchAdapter.PRODUCTS_INDEX;
+import static com.trodix.demo.adapter.out.ProductsCrudMeilisearchAdapter.PRODUCTS_INDEX;
 
 @Service
 @RequiredArgsConstructor

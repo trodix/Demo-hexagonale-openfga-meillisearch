@@ -1,4 +1,4 @@
-package com.trodix.demo.infrastructure;
+package com.trodix.demo.infrastructure.exceptions;
 
 import com.meilisearch.sdk.exceptions.MeilisearchApiException;
 import org.springframework.http.HttpStatus;
