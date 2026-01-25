@@ -6,6 +6,6 @@ import lombok.Data;
 public class Paging {
 
     private int pageSize;
-    private int offset;
+    private int page;
 
 }

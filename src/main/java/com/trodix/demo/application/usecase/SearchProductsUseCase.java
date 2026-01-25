@@ -54,7 +54,7 @@ public class SearchProductsUseCase {
 
             Pageable pageable = unfilteredProducts.getPageable();
             return new Page<>(
-                    new Pageable(pageable.getPage(), pageable.getPageSize(), filteredEntries.size(), pageable.getCount()),
+                    new Pageable(pageable.getPage(), filteredEntries.size(), filteredEntries.size() < pageable.getPageSize()),
                     filteredEntries
             );
 

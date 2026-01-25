@@ -25,9 +25,8 @@ public class MeilisearchUtils {
         return new Page<>(
                 new Pageable(
                         searchResultPaginated.getPage(),
-                        searchResultPaginated.getHitsPerPage(),
-                        searchResultPaginated.getTotalPages(),
-                        searchResultPaginated.getTotalHits()
+                        searchResultPaginated.getHits().size(),
+                        searchResultPaginated.getHits().size() == searchResultPaginated.getHitsPerPage()
                 ),
                 searchResultPaginated.getHits()
         );
