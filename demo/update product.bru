@@ -10,6 +10,10 @@ put {
   auth: basic
 }
 
+headers {
+  X-Tenant-Id: tenant1
+}
+
 auth:basic {
   username: admin
   password: password
@@ -17,64 +21,64 @@ auth:basic {
 
 body:json {
   {
-    "id": 3,
-    "title": "Essence Mascara Lash Princess",
-    "description": "The Essence Mascara Lash Princess is a popular mascara known for its volumizing and lengthening effects. Achieve dramatic lashes with this long-lasting and cruelty-free formula.",
-    "category": "beauty",
-    "price": 9.99,
-    "discountPercentage": 10.48,
-    "rating": 2.56,
-    "stock": 99,
-    "tags": [
-      "beauty",
-      "mascara"
-    ],
-    "brand": "Essence",
-    "sku": "BEA-ESS-ESS-001",
-    "weight": 4,
-    "dimensions": {
-      "width": 15.14,
-      "height": 13.08,
-      "depth": 22.99
-    },
-    "warrantyInformation": "1 week warranty",
-    "shippingInformation": "Ships in 3-5 business days",
     "availabilityStatus": "In Stock",
+    "brand": null,
+    "category": "groceries",
+    "description": "Fresh and tender chicken meat, suitable for various culinary preparations.",
+    "dimensions": {
+      "depth": 16.01,
+      "height": 22.11,
+      "width": 11.03
+    },
+    "discountPercentage": 13.7,
+    "id": 19,
+    "images": [
+      "https://cdn.dummyjson.com/product-images/groceries/chicken-meat/1.webp",
+      "https://cdn.dummyjson.com/product-images/groceries/chicken-meat/2.webp"
+    ],
+    "meta": {
+      "barcode": "8829514594521",
+      "createdAt": "2025-04-30T09:41:02.053Z",
+      "qrcode": null,
+      "updatedAt": "2025-04-30T09:41:02.053Z"
+    },
+    "minimumOrderQuantity": 22,
+    "price": 9.99,
+    "rating": 3.19,
+    "returnPolicy": "7 days return policy",
     "reviews": [
       {
-        "rating": 3,
-        "comment": "Would not recommend!",
+        "comment": "Great product!",
         "date": "2025-04-30T09:41:02.053Z",
-        "reviewerName": "Eleanor Collins",
-        "reviewerEmail": "eleanor.collins@x.dummyjson.com"
-      },
-      {
-        "rating": 4,
-        "comment": "Very satisfied!",
-        "date": "2025-04-30T09:41:02.053Z",
-        "reviewerName": "Lucas Gordon",
-        "reviewerEmail": "lucas.gordon@x.dummyjson.com"
-      },
-      {
         "rating": 5,
-        "comment": "Highly impressed!",
+        "reviewerEmail": "mateo.bennett@x.dummyjson.com",
+        "reviewerName": "Mateo Bennett"
+      },
+      {
+        "comment": "Highly recommended!",
         "date": "2025-04-30T09:41:02.053Z",
-        "reviewerName": "Eleanor Collins",
-        "reviewerEmail": "eleanor.collins@x.dummyjson.com"
+        "rating": 4,
+        "reviewerEmail": "jackson.evans@x.dummyjson.com",
+        "reviewerName": "Jackson Evans"
+      },
+      {
+        "comment": "Not worth the price!",
+        "date": "2025-04-30T09:41:02.053Z",
+        "rating": 3,
+        "reviewerEmail": "sadie.morales@x.dummyjson.com",
+        "reviewerName": "Sadie Morales"
       }
     ],
-    "returnPolicy": "No return policy",
-    "minimumOrderQuantity": 48,
-    "meta": {
-      "createdAt": "2025-04-30T09:41:02.053Z",
-      "updatedAt": "2025-04-30T09:41:02.053Z",
-      "barcode": "5784719087687",
-      "qrCode": "https://cdn.dummyjson.com/public/qr-code.png"
-    },
-    "images": [
-      "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/1.webp"
+    "shippingInformation": "Ships in 1 month",
+    "sku": "GRO-BRD-CHI-019",
+    "stock": 97,
+    "tags": [
+      "meat"
     ],
-    "thumbnail": "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp"
+    "thumbnail": "https://cdn.dummyjson.com/product-images/groceries/chicken-meat/thumbnail.webp",
+    "title": "Chicken Meat",
+    "warrantyInformation": "1 year warranty",
+    "weight": 1
   }
 }
 

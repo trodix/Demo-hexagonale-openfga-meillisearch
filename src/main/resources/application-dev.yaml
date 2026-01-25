@@ -2,6 +2,9 @@ openfga:
   api-url: http://localhost:8080
   store-id: 01KFNK6K4HZ3HHBR61ZTCGVM2E
 
+meilisearch:
+  api-url: http://localhost:7700
+
 logging:
   level:
     com.trodix: DEBUG

@@ -5,9 +5,13 @@ meta {
 }
 
 delete {
-  url: http://localhost:8000/api/products/1
+  url: http://localhost:8000/api/products/18
   body: none
   auth: basic
+}
+
+headers {
+  X-Tenant-Id: tenant1
 }
 
 auth:basic {

@@ -7,6 +7,7 @@ import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,8 +17,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ShowProductsUseCase {
+public class CrudProductsUseCase {
 
+    @Qualifier("meilisearchProductsAdapter")
     private final ProductsProvider productsProvider;
 
     private final OpenFgaClient fgaClient;

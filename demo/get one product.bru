@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: http://localhost:8000/api/products/2
+  url: http://localhost:8000/api/products/23
   body: none
   auth: basic
+}
+
+headers {
+  X-Tenant-Id: tenant1
 }
 
 auth:basic {

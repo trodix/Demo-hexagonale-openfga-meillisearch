@@ -1,7 +1,9 @@
 package com.trodix.demo.application.config;
 
+import com.meilisearch.sdk.Client;
 import com.trodix.demo.domain.port.ProductsProvider;
 import com.trodix.demo.infrastructure.adapter.DummyjsonProductsAdapter;
+import com.trodix.demo.infrastructure.adapter.MeilisearchProductsAdapter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,8 +19,13 @@ public class ProductsConfig {
     }
 
     @Bean
-    ProductsProvider productsProvider(@Qualifier("productsRestClient") RestClient restClient, ObjectMapper objectMapper) {
+    ProductsProvider dummyjsonProductsAdapter(@Qualifier("productsRestClient") RestClient restClient, ObjectMapper objectMapper) {
         return new DummyjsonProductsAdapter(restClient, objectMapper);
+    }
+
+    @Bean
+    ProductsProvider meilisearchProductsAdapter(Client msClient, ObjectMapper objectMapper) {
+        return new MeilisearchProductsAdapter(msClient, objectMapper);
     }
 
 }
