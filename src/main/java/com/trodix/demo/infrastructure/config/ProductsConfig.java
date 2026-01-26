@@ -15,8 +15,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.HashMap;
-
 @Configuration
 public class ProductsConfig {
 
@@ -26,8 +24,8 @@ public class ProductsConfig {
     }
 
     @Bean
-    ProductsProvider dummyjsonProductsAdapter(@Qualifier("productsRestClient") RestClient restClient, ObjectMapper objectMapper) {
-        return new DummyjsonProductsAdapter(restClient, objectMapper);
+    ProductsProvider dummyjsonProductsAdapter(@Qualifier("productsRestClient") RestClient restClient) {
+        return new DummyjsonProductsAdapter(restClient);
     }
 
     @Bean

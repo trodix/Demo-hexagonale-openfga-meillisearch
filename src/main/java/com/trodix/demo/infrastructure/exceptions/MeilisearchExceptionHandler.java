@@ -11,11 +11,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class MeilisearchExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(MeilisearchApiException.class)
-    public HttpClientErrorException handleMeilisearchApiException(MeilisearchApiException ex) {
+    public void handleMeilisearchApiException(MeilisearchApiException ex) {
         if ("document_not_found".equals(ex.getCode())) {
-            return new HttpClientErrorException(HttpStatus.NOT_FOUND, ex.getMessage());
+           throw new HttpClientErrorException(HttpStatus.NOT_FOUND, ex.getMessage());
         }
-        return new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+        throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
 
 }

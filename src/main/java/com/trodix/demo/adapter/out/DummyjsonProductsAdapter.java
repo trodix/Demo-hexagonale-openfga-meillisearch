@@ -5,7 +5,6 @@ import com.trodix.demo.domain.port.ProductsProvider;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.client.RestClient;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +14,6 @@ import java.util.Optional;
 public class DummyjsonProductsAdapter implements ProductsProvider {
 
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
 
     @Override
     public List<Product> getProducts() {
@@ -41,19 +39,24 @@ public class DummyjsonProductsAdapter implements ProductsProvider {
 
     @Override
     public Product createProduct(Product product) {
-        // TODO
+        // no-op
         return product;
     }
 
     @Override
+    public void createProductsBatch(List<Product> products, int batchSize) {
+        // no-op
+    }
+
+    @Override
     public Product updateProduct(Product product) {
-        // TODO
+        // no-op
         return product;
     }
 
     @Override
     public void deleteProduct(Long id) {
-        // TODO
+        // no-op
     }
 
     @Data

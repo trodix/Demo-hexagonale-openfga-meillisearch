@@ -11,22 +11,30 @@ get {
 }
 
 headers {
-  X-Tenant-Id: tenant2
+  X-Tenant-Id: tenant1
 }
 
 auth:basic {
-  username: user1
+  username: admin
   password: password
 }
 
 body:json {
   {
     "params": {
-      "searchTerms": "Stock"
+      "searchTerms": "a",
+      "includes": ["id", "title", "dimensions"],
+      "sort": {
+        "id": "asc",
+        "title": "desc"
+      },
+      "attributesToHighlight": ["title"],
+      "highlightPreTag": "<span>",
+      "highlightPostTag": "</span>"
     },
     "paging": {
-      "pageSize": 30,
-      "offset": 0
+      "offset": 0,
+      "limit": 20
     }
     
   }

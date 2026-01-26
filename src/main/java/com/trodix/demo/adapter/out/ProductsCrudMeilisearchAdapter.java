@@ -36,6 +36,12 @@ public class ProductsCrudMeilisearchAdapter implements ProductsProvider {
     }
 
     @Override
+    public void createProductsBatch(List<Product> products, int batchSize) {
+        String json = objectMapper.writeValueAsString(products);
+        msClient.getIndex(PRODUCTS_INDEX).addDocumentsInBatches(json, batchSize, "id");
+    }
+
+    @Override
     public Product updateProduct(Product product) {
         String json = objectMapper.writeValueAsString(product);
         msClient.getIndex(PRODUCTS_INDEX).updateDocuments(json, "id");

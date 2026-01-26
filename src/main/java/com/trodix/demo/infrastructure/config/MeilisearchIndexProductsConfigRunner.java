@@ -1,7 +1,8 @@
-package com.trodix.demo.application.usecase;
+package com.trodix.demo.infrastructure.config;
 
 import com.meilisearch.sdk.Client;
-import com.meilisearch.sdk.Index;
+import com.meilisearch.sdk.model.Settings;
+import com.meilisearch.sdk.model.TaskInfo;
 import com.trodix.demo.domain.model.Product;
 import com.trodix.demo.domain.port.ProductsProvider;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static com.trodix.demo.adapter.out.ProductsCrudMeilisearchAdapter.PRODUCTS_INDEX;
@@ -18,7 +18,7 @@ import static com.trodix.demo.adapter.out.ProductsCrudMeilisearchAdapter.PRODUCT
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class IndexProductsUseCase implements CommandLineRunner {
+public class MeilisearchIndexProductsConfigRunner implements CommandLineRunner {
 
     @Qualifier("dummyjsonProductsAdapter")
     private final ProductsProvider dummyjsonProductsAdapter;
@@ -31,19 +31,20 @@ public class IndexProductsUseCase implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        if (Arrays.stream(msClient.getIndexes().getResults()).map(Index::getUid).anyMatch(PRODUCTS_INDEX::equals)) {
-            log.info("Index {} already exists in Meilisearch", PRODUCTS_INDEX);
-            return;
-        }
-
-        log.info("Creating index {} in Meilisearch", PRODUCTS_INDEX);
+        log.info("Creating/updating index {} in Meilisearch", PRODUCTS_INDEX);
         msClient.createIndex(PRODUCTS_INDEX);
 
-        List<Product> products = dummyjsonProductsAdapter.getProducts();
+        log.info("Index configuration for {}", PRODUCTS_INDEX);
+        Settings settings = new Settings();
+        settings.setSearchableAttributes(new String[]{"*"});
+        settings.setSortableAttributes(new String[]{"id", "title"});
+        TaskInfo updateSettingsTask = msClient.getIndex(PRODUCTS_INDEX).updateSettings(settings);
+        log.info("Updated settings for {} with taskInfo (id={}, status={})",
+                PRODUCTS_INDEX,  updateSettingsTask.getTaskUid(),  updateSettingsTask.getStatus());
 
-        for (Product product : products) {
-            meilisearchProductsAdapter.createProduct(product);
-        }
+        List<Product> products = dummyjsonProductsAdapter.getProducts();
+        meilisearchProductsAdapter.createProductsBatch(products, 50);
+
         log.info("Products indexed in Meilisearch: {}", products.size());
     }
 }

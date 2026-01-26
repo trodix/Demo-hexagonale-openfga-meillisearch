@@ -12,6 +12,8 @@ public interface ProductsProvider {
 
     Product createProduct(Product product);
 
+    void createProductsBatch(List<Product> products, int batchSize);
+
     Product updateProduct(Product product);
 
     void deleteProduct(Long id);

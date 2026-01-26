@@ -13,6 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import static com.trodix.demo.adapter.out.MeilisearchUtils.toEntityPage;
 import static com.trodix.demo.adapter.out.ProductsCrudMeilisearchAdapter.PRODUCTS_INDEX;
 
@@ -44,6 +48,14 @@ public class ProductsMeilisearchSearchAdapter implements SearchProvider<Partial<
 
         if (StringUtils.hasText(query.getParams().getHighlightPostTag())) {
             searchRequest.setHighlightPostTag(query.getParams().getHighlightPostTag());
+        }
+
+        if (query.getParams().getSort() != null && !query.getParams().getSort().isEmpty()) {
+            List<String> sortArgs = new ArrayList<>();
+            for (Map.Entry<String, String> entry : query.getParams().getSort().entrySet()) {
+                sortArgs.add(entry.getKey() + ":" + entry.getValue());
+            }
+            searchRequest.setSort(sortArgs.toArray(new String[0]));
         }
 
         String rawResponse = msClient.getIndex(PRODUCTS_INDEX).rawSearch(searchRequest);
