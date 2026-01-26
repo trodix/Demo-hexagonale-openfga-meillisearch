@@ -1,12 +1,14 @@
 package com.trodix.demo.adapter.out;
 
 import com.trodix.demo.domain.model.Product;
+import com.trodix.demo.domain.search.entity.Partial;
 import com.trodix.demo.domain.search.pagination.Page;
 import com.trodix.demo.domain.search.pagination.Pageable;
 import com.trodix.demo.domain.search.query.Paging;
 import lombok.Data;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MeilisearchUtils {
 
@@ -22,14 +24,14 @@ public class MeilisearchUtils {
         private String requestUid;
     }
 
-    public static Page<Product> toEntityPage(SearchResultPaginated<Product> searchResultPaginated, Paging paging) {
+    public static Page<Partial<Product>> toEntityPage(com.meilisearch.sdk.model.SearchResultPaginated searchResultPaginated, Paging paging) {
         return new Page<>(
                 new Pageable(
                         (paging.getOffset() / paging.getLimit()) + 1,
                         searchResultPaginated.getHits().size(),
                         searchResultPaginated.getHits().size() == paging.getLimit()
                 ),
-                searchResultPaginated.getHits()
+                searchResultPaginated.getHits().stream().map(Partial<Product>::new).collect(Collectors.toList())
         );
     }
 

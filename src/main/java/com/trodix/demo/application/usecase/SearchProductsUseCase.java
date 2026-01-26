@@ -6,6 +6,7 @@ import com.trodix.demo.application.port.ProductAuthorizationPort;
 import com.trodix.demo.domain.model.Product;
 import com.trodix.demo.domain.model.ProductQuery;
 import com.trodix.demo.domain.port.SearchProvider;
+import com.trodix.demo.domain.search.entity.Partial;
 import com.trodix.demo.domain.search.pagination.Page;
 import com.trodix.demo.domain.search.pagination.Pageable;
 import lombok.RequiredArgsConstructor;
@@ -20,18 +21,18 @@ import java.util.Set;
 @Slf4j
 public class SearchProductsUseCase {
 
-    private final SearchProvider<Product, ProductQuery> searchProvider;
+    private final SearchProvider<Partial<Product>, ProductQuery> searchProvider;
 
     private final SpringAuthenticationAdapter authService;
 
     private final ProductAuthorizationPort authorizationPort;
 
-    public Page<Product> searchProducts(ProductQuery query) {
-        Page<Product> unfilteredProducts = searchProvider.searchEntity(query);
+    public Page<Partial<Product>> searchProducts(ProductQuery query) {
+        Page<Partial<Product>> unfilteredProducts = searchProvider.searchEntity(query);
         return getFilteredProducts(authService.getTenant(), unfilteredProducts);
     }
 
-    private Page<Product> getFilteredProducts(String tenantId, Page<Product> unfilteredProducts) {
+    private Page<Partial<Product>> getFilteredProducts(String tenantId, Page<Partial<Product>> unfilteredProducts) {
         String username = authService.getUsername();
         try {
 
@@ -48,8 +49,8 @@ public class SearchProductsUseCase {
             Set<String> allowedProductIds = authorizationPort.getReadableProductIds(username, tenantId);
             log.debug("User {} has read access to {} products", username, allowedProductIds.size());
 
-            List<Product> filteredEntries = unfilteredProducts.getEntries().stream()
-                    .filter(p -> allowedProductIds.contains(p.getId().toString()))
+            List<Partial<Product>> filteredEntries = unfilteredProducts.getEntries().stream()
+                    .filter(p -> allowedProductIds.contains(p.get("id").toString()))
                     .toList();
 
             Pageable pageable = unfilteredProducts.getPageable();
