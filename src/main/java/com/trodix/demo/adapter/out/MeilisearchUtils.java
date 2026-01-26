@@ -3,6 +3,7 @@ package com.trodix.demo.adapter.out;
 import com.trodix.demo.domain.model.Product;
 import com.trodix.demo.domain.search.pagination.Page;
 import com.trodix.demo.domain.search.pagination.Pageable;
+import com.trodix.demo.domain.search.query.Paging;
 import lombok.Data;
 
 import java.util.List;
@@ -21,12 +22,12 @@ public class MeilisearchUtils {
         private String requestUid;
     }
 
-    public static Page<Product> toEntityPage(SearchResultPaginated<Product> searchResultPaginated) {
+    public static Page<Product> toEntityPage(SearchResultPaginated<Product> searchResultPaginated, Paging paging) {
         return new Page<>(
                 new Pageable(
-                        searchResultPaginated.getPage(),
+                        (paging.getOffset() / paging.getLimit()) + 1,
                         searchResultPaginated.getHits().size(),
-                        searchResultPaginated.getHits().size() == searchResultPaginated.getHitsPerPage()
+                        searchResultPaginated.getHits().size() == paging.getLimit()
                 ),
                 searchResultPaginated.getHits()
         );

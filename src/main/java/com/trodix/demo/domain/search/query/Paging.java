@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class Paging {
 
-    private int pageSize;
-    private int page;
+    private int offset;
+    private int limit;
 
 }

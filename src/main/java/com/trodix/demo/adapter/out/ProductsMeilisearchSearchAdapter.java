@@ -10,9 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.ObjectMapper;
 
-import static com.trodix.demo.adapter.out.ProductsCrudMeilisearchAdapter.PRODUCTS_INDEX;
 import static com.trodix.demo.adapter.out.MeilisearchUtils.SearchResultPaginated;
 import static com.trodix.demo.adapter.out.MeilisearchUtils.toEntityPage;
+import static com.trodix.demo.adapter.out.ProductsCrudMeilisearchAdapter.PRODUCTS_INDEX;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -25,8 +25,8 @@ public class ProductsMeilisearchSearchAdapter implements SearchProvider<Product,
     @Override
     public Page<Product> searchEntity(ProductQuery query) {
         String rawResponse = msClient.getIndex(PRODUCTS_INDEX).rawSearch(new SearchRequest(query.getParams().getSearchTerms())
-                .setPage(Math.max(query.getPaging().getPage(), 1))
-                .setHitsPerPage(query.getPaging().getPageSize())
+                .setOffset(query.getPaging().getOffset())
+                .setLimit(query.getPaging().getLimit())
         );
 
         if (log.isTraceEnabled()) {
@@ -38,7 +38,7 @@ public class ProductsMeilisearchSearchAdapter implements SearchProvider<Product,
                 mapper.getTypeFactory().constructParametricType(SearchResultPaginated.class, Product.class)
         );
 
-        return toEntityPage(result);
+        return toEntityPage(result, query.getPaging());
     }
 
 }
