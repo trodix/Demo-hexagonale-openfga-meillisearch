@@ -1,6 +1,7 @@
 package com.trodix.demo.adapter.in;
 
 import com.trodix.demo.adapter.in.security.SpringAuthenticationAdapter;
+import com.trodix.demo.adapter.in.util.JsonFilterHelper;
 import com.trodix.demo.application.usecase.CrudProductsUseCase;
 import com.trodix.demo.application.usecase.SearchProductsUseCase;
 import com.trodix.demo.domain.model.Product;
@@ -9,8 +10,10 @@ import com.trodix.demo.domain.search.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import tools.jackson.core.JacksonException;
 
 import java.util.List;
 
@@ -61,8 +64,9 @@ public class ProductsRestAdapter {
 
     @GetMapping(value = "search", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(value = HttpStatus.OK)
-    public Page<Product> searchProducts(@RequestBody ProductQuery queryRequest) {
-        return searchProductProvider.searchProducts(queryRequest);
+    public ResponseEntity<String> searchProducts(@RequestBody ProductQuery queryRequest) throws JacksonException {
+        Page<Product> results = searchProductProvider.searchProducts(queryRequest);
+        return JsonFilterHelper.filterResponse(results, queryRequest.getParams().getIncludes());
     }
 
 }
