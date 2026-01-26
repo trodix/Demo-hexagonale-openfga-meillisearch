@@ -10,6 +10,7 @@ import com.trodix.demo.domain.search.entity.Partial;
 import com.trodix.demo.domain.search.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 import tools.jackson.databind.ObjectMapper;
 
 import static com.trodix.demo.adapter.out.MeilisearchUtils.toEntityPage;
@@ -31,6 +32,18 @@ public class ProductsMeilisearchSearchAdapter implements SearchProvider<Partial<
 
         if (query.getParams().getIncludes() != null && !query.getParams().getIncludes().isEmpty()) {
             searchRequest.setAttributesToRetrieve(query.getParams().getIncludes().toArray(new String[0]));
+        }
+
+        if (query.getParams().getAttributesToHighlight() != null && !query.getParams().getAttributesToHighlight().isEmpty()) {
+            searchRequest.setAttributesToHighlight(query.getParams().getAttributesToHighlight().toArray(new String[0]));
+        }
+
+        if (StringUtils.hasText(query.getParams().getHighlightPreTag())) {
+            searchRequest.setHighlightPreTag(query.getParams().getHighlightPreTag());
+        }
+
+        if (StringUtils.hasText(query.getParams().getHighlightPostTag())) {
+            searchRequest.setHighlightPostTag(query.getParams().getHighlightPostTag());
         }
 
         String rawResponse = msClient.getIndex(PRODUCTS_INDEX).rawSearch(searchRequest);

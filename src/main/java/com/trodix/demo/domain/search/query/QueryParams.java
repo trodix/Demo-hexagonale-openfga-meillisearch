@@ -8,5 +8,8 @@ import java.util.List;
 public abstract class QueryParams {
 
     private List<String> includes;
+    private List<String> attributesToHighlight;
+    private String highlightPreTag;
+    private String highlightPostTag;
 
 }
