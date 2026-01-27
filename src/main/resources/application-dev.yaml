@@ -1,6 +1,6 @@
 openfga:
   api-url: http://localhost:8080
-  store-id: 01KFNK6K4HZ3HHBR61ZTCGVM2E
+  store-id: 01KG00DZSR79DSV1VV4ATSDH9J
 
 meilisearch:
   api-url: http://localhost:7700
