@@ -1,0 +1,168 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Administration des Permissions</span>
+</mat-toolbar>
+
+<div class="admin-container">
+  <!-- Section 1: Recherche et sélection d'utilisateurs -->
+  <mat-card class="users-section">
+    <mat-card-header>
+      <mat-card-title>Rechercher un utilisateur</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Rechercher</mat-label>
+        <input matInput [formControl]="searchControl" placeholder="Nom d'utilisateur..." />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      @if (loading()) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+        </div>
+      }
+
+      @if (!loading() && filteredUsers().length > 0) {
+        <table mat-table [dataSource]="filteredUsers()" class="users-table">
+          <ng-container matColumnDef="username">
+            <th mat-header-cell *matHeaderCellDef>Utilisateur</th>
+            <td mat-cell *matCellDef="let user">{{ user.username }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="displayName">
+            <th mat-header-cell *matHeaderCellDef>Nom</th>
+            <td mat-cell *matCellDef="let user">{{ user.displayName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let user">
+              <button mat-button color="primary" (click)="selectUser(user)">
+                Sélectionner
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Section 2: Gestion des permissions de l'utilisateur sélectionné -->
+  @if (selectedUser()) {
+    <mat-card class="permissions-section">
+      <mat-card-header>
+        <mat-card-title>Permissions de {{ selectedUser()!.username }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <!-- Membership au tenant -->
+        <div class="permission-group">
+          <h3>Membre du Tenant</h3>
+          <button
+            mat-raised-button
+            [color]="isTenantMember() ? 'warn' : 'primary'"
+            (click)="toggleTenantMembership()"
+          >
+            @if (isTenantMember()) {
+              Retirer du tenant
+            } @else {
+              Ajouter au tenant
+            }
+          </button>
+        </div>
+
+        <!-- Permissions sur les entités -->
+        <div class="permission-group">
+          <h3>Permissions sur les Entités</h3>
+          <div class="permission-form">
+            <mat-form-field appearance="outline">
+              <mat-label>Entité</mat-label>
+              <mat-select [formControl]="entityControl">
+                @for (entity of entities(); track entity.id) {
+                  <mat-option [value]="entity.id">{{ entity.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Relation</mat-label>
+              <mat-select [formControl]="entityRelationControl">
+                @for (relation of availableEntityRelations(); track relation) {
+                  <mat-option [value]="relation">{{ relation }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="addEntityPermission()"
+              [disabled]="!entityControl.value || !entityRelationControl.value"
+            >
+              Ajouter
+            </button>
+          </div>
+        </div>
+
+        <!-- Permissions sur les produits -->
+        <div class="permission-group">
+          <h3>Permissions sur les Produits</h3>
+          <div class="permission-form">
+            <mat-form-field appearance="outline">
+              <mat-label>ID du produit</mat-label>
+              <input matInput [formControl]="productIdControl" type="number" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Relation</mat-label>
+              <mat-select [formControl]="productRelationControl">
+                @for (relation of productRelations; track relation) {
+                  <mat-option [value]="relation">{{ relation }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="addProductPermission()"
+              [disabled]="!productIdControl.value || !productRelationControl.value"
+            >
+              Ajouter
+            </button>
+          </div>
+        </div>
+
+        <!-- Liste des permissions actuelles -->
+        <div class="permission-group">
+          <h3>Permissions Actuelles</h3>
+
+          @if (loadingPermissions()) {
+            <mat-spinner diameter="40"></mat-spinner>
+          }
+
+          @if (!loadingPermissions() && userPermissions().length > 0) {
+            <div class="permissions-list">
+              @for (permission of userPermissions(); track permission) {
+                <mat-chip-row (removed)="removePermission(permission)">
+                  {{ permission.objectType }}:{{ permission.objectId }} - {{ permission.relation }}
+                  <button matChipRemove>
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip-row>
+              }
+            </div>
+          }
+
+          @if (!loadingPermissions() && userPermissions().length === 0) {
+            <p class="no-permissions">Aucune permission</p>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

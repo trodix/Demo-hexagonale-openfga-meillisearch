@@ -67,6 +67,7 @@ export class ProductSearchComponent implements OnInit {
 
   protected readonly username = computed(() => this.authService.username());
   protected readonly tenantId = computed(() => this.authService.tenantId());
+  protected readonly isAdmin = computed(() => this.authService.isAdmin());
   protected readonly hasMore = computed(() => this.hasMoreElements());
   protected readonly isEmpty = computed(() => !this.loading() && this.products().length === 0 && this.searchControl.value);
 
@@ -90,6 +91,12 @@ export class ProductSearchComponent implements OnInit {
         window.scrollTo(0, savedState.scrollPosition);
       }, 0);
     }
+
+    // Debug: vérifier le statut admin
+    console.log('[SEARCH] isAdmin:', this.isAdmin());
+    setTimeout(() => {
+      console.log('[SEARCH] isAdmin après 1s:', this.isAdmin());
+    }, 1000);
   }
 
   private setupSearchListener(): void {
@@ -186,6 +193,10 @@ export class ProductSearchComponent implements OnInit {
   protected logout(): void {
     this.searchStateService.clearState();
     this.authService.logout();
+  }
+
+  protected goToAdmin(): void {
+    this.router.navigate(['/admin/permissions']);
   }
 
   protected trackByProductId(index: number, product: Product): number {

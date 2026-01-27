@@ -1,11 +1,9 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-  const authHeader = authService.getAuthHeader();
-  const tenantId = authService.getTenantId();
+  // Accéder directement au sessionStorage pour éviter la dépendance circulaire
+  const authHeader = sessionStorage.getItem('auth_credentials');
+  const tenantId = sessionStorage.getItem('auth_tenant_id');
 
   if (authHeader && tenantId && !req.url.includes('/login')) {
     const authReq = req.clone({

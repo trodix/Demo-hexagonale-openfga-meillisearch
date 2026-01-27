@@ -9,6 +9,7 @@ export interface AuthState {
   username: string | null;
   credentials: string | null;
   tenantId: string | null;
+  isAdmin: boolean;
 }
 
 export interface Tenant {
