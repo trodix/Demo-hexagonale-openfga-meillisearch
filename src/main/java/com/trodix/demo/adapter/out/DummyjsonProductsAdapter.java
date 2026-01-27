@@ -20,7 +20,7 @@ public class DummyjsonProductsAdapter implements ProductsProvider {
         return Optional.ofNullable(
                 restClient
                         .get()
-                        .uri("https://dummyjson.com/products")
+                        .uri("https://dummyjson.com/products?limit=100000")
                         .retrieve()
                         .body(ProductResponse.class)
                 )

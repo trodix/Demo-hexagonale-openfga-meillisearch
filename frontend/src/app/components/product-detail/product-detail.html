@@ -1,0 +1,105 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="goBack()" aria-label="Retour">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Détails du produit</span>
+</mat-toolbar>
+
+<div class="product-detail-container">
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner></mat-spinner>
+      <p>Chargement du produit...</p>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-container">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <h2>Erreur de chargement</h2>
+      <p>Impossible de charger les détails du produit.</p>
+      <button mat-raised-button color="primary" (click)="goBack()">
+        Retour à la recherche
+      </button>
+    </div>
+  }
+
+  @if (!loading() && !error() && product()) {
+    <mat-card class="product-card">
+      <div class="product-layout">
+        <div class="product-images">
+          @if (product()!.thumbnail) {
+            <img [src]="product()!.thumbnail" [alt]="product()!.title" class="main-image" />
+          }
+          @if (product()!.images && product()!.images!.length > 0) {
+            <div class="image-gallery">
+              @for (image of product()!.images; track image) {
+                <img [src]="image" [alt]="product()!.title" class="gallery-image" />
+              }
+            </div>
+          }
+        </div>
+
+        <div class="product-info">
+          <mat-card-header>
+            <mat-card-title>{{ product()!.title }}</mat-card-title>
+            @if (product()!.category) {
+              <mat-card-subtitle>{{ product()!.category }}</mat-card-subtitle>
+            }
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="price-section">
+              @if (discountedPrice()) {
+                <div class="discount-info">
+                  <span class="original-price">{{ product()!.price }} €</span>
+                  <span class="discount-badge">-{{ product()!.discountPercentage }}%</span>
+                </div>
+                <p class="price discounted">{{ discountedPrice()!.toFixed(2) }} €</p>
+              } @else {
+                <p class="price">{{ product()!.price }} €</p>
+              }
+            </div>
+
+            <div class="meta-section">
+              @if (product()!.rating !== undefined && product()!.rating !== null) {
+                <div class="meta-item rating">
+                  <mat-icon>star</mat-icon>
+                  <span><strong>Note:</strong> {{ product()!.rating }}/5</span>
+                </div>
+              }
+              @if (product()!.stock !== undefined && product()!.stock !== null) {
+                <div class="meta-item stock">
+                  <mat-icon>inventory</mat-icon>
+                  <span><strong>Stock:</strong> {{ product()!.stock }} unités</span>
+                </div>
+              }
+              @if (product()!.brand) {
+                <div class="meta-item brand">
+                  <mat-icon>label</mat-icon>
+                  <span><strong>Marque:</strong> {{ product()!.brand }}</span>
+                </div>
+              }
+            </div>
+
+            <div class="description-section">
+              <h3>Description</h3>
+              <p>{{ product()!.description }}</p>
+            </div>
+
+            @if (product()!.tags && product()!.tags!.length > 0) {
+              <div class="tags-section">
+                <h3>Tags</h3>
+                <mat-chip-set>
+                  @for (tag of product()!.tags; track tag) {
+                    <mat-chip>{{ tag }}</mat-chip>
+                  }
+                </mat-chip-set>
+              </div>
+            }
+          </mat-card-content>
+        </div>
+      </div>
+    </mat-card>
+  }
+</div>

@@ -37,7 +37,7 @@ public class MeilisearchIndexProductsConfigRunner implements CommandLineRunner {
         log.info("Index configuration for {}", PRODUCTS_INDEX);
         Settings settings = new Settings();
         settings.setSearchableAttributes(new String[]{"*"});
-        settings.setSortableAttributes(new String[]{"id", "title"});
+        settings.setSortableAttributes(new String[]{"title", "price", "rating", "stock"});
         TaskInfo updateSettingsTask = msClient.getIndex(PRODUCTS_INDEX).updateSettings(settings);
         log.info("Updated settings for {} with taskInfo (id={}, status={})",
                 PRODUCTS_INDEX,  updateSettingsTask.getTaskUid(),  updateSettingsTask.getStatus());

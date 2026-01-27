@@ -1,0 +1,141 @@
+<mat-toolbar color="primary">
+  <span>Recherche de Produits</span>
+  <span class="spacer"></span>
+  @if (username() && tenantId()) {
+    <span class="user-info">
+      <mat-icon class="info-icon">business</mat-icon>
+      <span class="tenant-name">{{ tenantId() }}</span>
+      <span class="separator">|</span>
+      <mat-icon class="info-icon">person</mat-icon>
+      <span class="username">{{ username() }}</span>
+    </span>
+    <button mat-icon-button (click)="logout()" aria-label="Se déconnecter">
+      <mat-icon>logout</mat-icon>
+    </button>
+  }
+</mat-toolbar>
+
+<div class="search-container">
+  <mat-card class="search-card">
+    <mat-card-content>
+      <div class="search-controls">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Rechercher des produits</mat-label>
+          <input
+            matInput
+            [formControl]="searchControl"
+            placeholder="Entrez le nom d'un produit..."
+            autocomplete="off"
+          />
+          <mat-icon matPrefix>search</mat-icon>
+          @if (searchControl.value) {
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              (click)="searchControl.setValue('')"
+              aria-label="Effacer la recherche"
+            >
+              <mat-icon>clear</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="sort-field">
+          <mat-label>Trier par</mat-label>
+          <mat-select [formControl]="sortControl">
+            @for (option of sortOptions; track option.label) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+          <mat-icon matPrefix>sort</mat-icon>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner></mat-spinner>
+      <p>Recherche en cours...</p>
+    </div>
+  }
+
+  @if (!loading() && products().length > 0) {
+    <div class="results-info">
+      <p>{{ products().length }} résultat(s) @if (hasMoreElements()) { - plus de résultats disponibles }</p>
+    </div>
+
+    <div class="products-grid">
+      @for (product of products(); track trackByProductId($index, product)) {
+        <mat-card class="product-card" (click)="viewProduct(product.id)">
+          @if (product.thumbnail) {
+            <img mat-card-image [src]="product.thumbnail" [alt]="product.title" />
+          }
+          <mat-card-header>
+            <mat-card-title [innerHTML]="getTitle(product)"></mat-card-title>
+            @if (getCategory(product)) {
+              <mat-card-subtitle [innerHTML]="getCategory(product)"></mat-card-subtitle>
+            }
+          </mat-card-header>
+          <mat-card-content>
+            <p class="description" [innerHTML]="getDescription(product)"></p>
+            @if (getDiscountedPrice(product)) {
+              <div class="discount-info">
+                <span class="original-price">{{ product.price }} €</span>
+                <span class="discount-badge">-{{ product.discountPercentage }}%</span>
+              </div>
+              <p class="price discounted">{{ getDiscountedPrice(product)!.toFixed(2) }} €</p>
+            } @else {
+              <p class="price">{{ product.price }} €</p>
+            }
+            <div class="product-meta">
+              @if (product.rating !== undefined && product.rating !== null) {
+                <span class="meta-item rating">
+                  <mat-icon>star</mat-icon>
+                  <span>{{ product.rating }}</span>
+                </span>
+              }
+              @if (product.stock !== undefined && product.stock !== null) {
+                <span class="meta-item stock">
+                  <mat-icon>inventory</mat-icon>
+                  <span>{{ product.stock }}</span>
+                </span>
+              }
+            </div>
+            @if (getBrand(product)) {
+              <p class="brand" [innerHTML]="getBrand(product)"></p>
+            }
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+
+    @if (loadingMore()) {
+      <div class="loading-more">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Chargement...</p>
+      </div>
+    }
+
+    @if (!hasMore() && products().length > 0) {
+      <div class="no-more-results">
+        <p>Tous les résultats ont été chargés</p>
+      </div>
+    }
+  }
+
+  @if (isEmpty()) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">search_off</mat-icon>
+      <p>Aucun produit trouvé</p>
+    </div>
+  }
+
+  @if (!loading() && !searchControl.value && products().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">inventory_2</mat-icon>
+      <p>Commencez par rechercher un produit</p>
+    </div>
+  }
+</div>

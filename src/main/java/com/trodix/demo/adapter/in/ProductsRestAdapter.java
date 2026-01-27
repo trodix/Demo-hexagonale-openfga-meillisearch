@@ -60,7 +60,7 @@ public class ProductsRestAdapter {
         crudProductsUseCase.deleteProduct(id);
     }
 
-    @GetMapping(value = "search", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "search", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(value = HttpStatus.OK)
     public Page<Partial<Product>> searchProducts(@RequestBody ProductQuery queryRequest) {
         return searchProductProvider.searchProducts(queryRequest);
