@@ -23,6 +23,7 @@ public class PermissionsRestAdapter {
     private final ListEntitiesUseCase listEntitiesUseCase;
     private final ListAdminTenantsUseCase listAdminTenantsUseCase;
     private final GetEnrichedPermissionsUseCase getEnrichedPermissionsUseCase;
+    private final CheckProductPermissionUseCase checkProductPermissionUseCase;
     private final SpringAuthenticationAdapter auth;
 
     @PostMapping(value = "/api/permissions/check", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -97,5 +98,17 @@ public class PermissionsRestAdapter {
     public EnrichedPermissionsResponse getEnrichedPermissions(@PathVariable String username) {
         String tenantId = auth.getTenant();
         return getEnrichedPermissionsUseCase.getEnrichedPermissions(username, tenantId);
+    }
+
+    @GetMapping(value = "/api/admin/users/{username}/products/{productId}/check", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
+    public ProductPermissionCheckResponse checkProductPermission(
+        @PathVariable String username,
+        @PathVariable String productId,
+        @RequestParam String relation
+    ) {
+        boolean allowed = checkProductPermissionUseCase.checkProductPermission(username, productId, relation);
+        return new ProductPermissionCheckResponse(username, productId, relation, allowed);
     }
 }

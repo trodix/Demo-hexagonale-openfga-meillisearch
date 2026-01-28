@@ -92,6 +92,13 @@ export interface TenantPermissionStatusDto {
   isAdmin: boolean;
 }
 
+export interface ProductPermissionCheckResponse {
+  username: string;
+  productId: string;
+  relation: string;
+  allowed: boolean;
+}
+
 export interface PermissionStatus {
   hasPermission: boolean;
   isDirect: boolean;

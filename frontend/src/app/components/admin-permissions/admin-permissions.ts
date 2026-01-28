@@ -12,6 +12,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PermissionService } from '../../services/permission.service';
 import { AuthService } from '../../services/auth.service';
@@ -24,7 +25,8 @@ import {
   TenantMembershipRow,
   EntityPermissionRow,
   ProductPermissionRow,
-  EnrichedPermissionsResponse
+  EnrichedPermissionsResponse,
+  ProductPermissionCheckResponse
 } from '../../models/permission.model';
 
 @Component({
@@ -40,7 +42,8 @@ import {
     MatCardModule,
     MatProgressSpinnerModule,
     MatCheckboxModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatSelectModule
   ],
   templateUrl: './admin-permissions.html',
   styleUrl: './admin-permissions.scss',
@@ -71,6 +74,10 @@ export class AdminPermissions implements OnInit {
 
   protected readonly searchControl = new FormControl('');
   protected readonly productIdControl = new FormControl('');
+  protected readonly checkProductIdControl = new FormControl('');
+  protected readonly checkRelationControl = new FormControl('read');
+  protected readonly checkResult = signal<ProductPermissionCheckResponse | null>(null);
+  protected readonly checkLoading = signal(false);
 
   protected readonly displayedColumns = ['username', 'displayName', 'actions'];
   protected readonly tenantColumns = ['name', 'member', 'admin'];
@@ -465,6 +472,32 @@ export class AdminPermissions implements OnInit {
 
   private showNotification(message: string): void {
     this.snackBar.open(message, 'Fermer', { duration: 3000 });
+  }
+
+  protected checkProductPermission(): void {
+    const user = this.selectedUser();
+    const productId = this.checkProductIdControl.value;
+    const relation = this.checkRelationControl.value;
+
+    if (!user || !productId || !relation) {
+      this.showNotification('Veuillez sélectionner un utilisateur, saisir un ID produit et choisir une relation');
+      return;
+    }
+
+    this.checkLoading.set(true);
+    this.checkResult.set(null);
+
+    this.permissionService.checkProductPermission(user.username, productId, relation).subscribe({
+      next: (response) => {
+        this.checkResult.set(response);
+        this.checkLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Error checking product permission:', err);
+        this.showNotification('Erreur lors de la vérification');
+        this.checkLoading.set(false);
+      }
+    });
   }
 
   protected goBack(): void {
