@@ -64,7 +64,7 @@ export class AdminPermissions implements OnInit {
   protected readonly selectedEntityId = toSignal(this.entityControl.valueChanges, { initialValue: null });
 
   protected readonly displayedColumns = ['username', 'displayName', 'actions'];
-  protected readonly productRelations = ['owner', 'read', 'write', 'delete'];
+  protected readonly productRelations = ['read', 'write', 'delete'];
 
   protected readonly filteredUsers = computed(() => {
     const search = this.searchControl.value?.toLowerCase() || '';
@@ -76,17 +76,11 @@ export class AdminPermissions implements OnInit {
 
   protected readonly availableEntityRelations = computed(() => {
     const entityId = this.selectedEntityId();
-    console.log('[ADMIN] selectedEntityId():', entityId);
-    console.log('[ADMIN] entities:', this.entities());
     if (!entityId) {
-      console.log('[ADMIN] No entity selected');
       return [];
     }
     const entity = this.entities().find(e => e.id === entityId);
-    console.log('[ADMIN] Found entity:', entity);
-    const relations = entity?.availableRelations || [];
-    console.log('[ADMIN] Available relations:', relations);
-    return relations;
+    return entity?.availableRelations || [];
   });
 
   protected readonly isTenantMember = computed(() => {

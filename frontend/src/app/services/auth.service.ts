@@ -54,13 +54,10 @@ export class AuthService {
       ]
     };
 
-    console.log('[AUTH] Vérification du rôle admin pour tenant:', tenantId);
     this.http.post<{ results: { [key: string]: boolean } }>('/api/permissions/check', checkRequest)
       .subscribe({
         next: (response) => {
-          console.log('[AUTH] Réponse du check admin:', response);
           const isAdmin = response.results[`tenant:${tenantId} admin`] || false;
-          console.log('[AUTH] isAdmin défini à:', isAdmin);
           this.authState.update(state => ({ ...state, isAdmin }));
           sessionStorage.setItem('auth_is_admin', String(isAdmin));
         },

@@ -91,12 +91,6 @@ export class ProductSearchComponent implements OnInit {
         window.scrollTo(0, savedState.scrollPosition);
       }, 0);
     }
-
-    // Debug: vérifier le statut admin
-    console.log('[SEARCH] isAdmin:', this.isAdmin());
-    setTimeout(() => {
-      console.log('[SEARCH] isAdmin après 1s:', this.isAdmin());
-    }, 1000);
   }
 
   private setupSearchListener(): void {
@@ -136,7 +130,6 @@ export class ProductSearchComponent implements OnInit {
 
   private performSearch(query: string, isLoadMore: boolean = false): void {
     const sort = this.sortControl.value || undefined;
-    console.log('performSearch called', { query, isLoadMore, offset: this.currentOffset(), sort });
 
     if (isLoadMore) {
       this.loadingMore.set(true);
@@ -148,7 +141,6 @@ export class ProductSearchComponent implements OnInit {
 
     this.productService.searchProducts(query, offset, this.limit, sort || undefined).subscribe({
       next: (response) => {
-        console.log('Search response received:', response);
 
         if (isLoadMore) {
           this.products.update(current => [...current, ...response.entries]);
@@ -160,12 +152,6 @@ export class ProductSearchComponent implements OnInit {
         this.currentOffset.update(current => current + response.entries.length);
         this.loading.set(false);
         this.loadingMore.set(false);
-
-        console.log('State after update:', {
-          loading: this.loading(),
-          productsLength: this.products().length,
-          hasMoreElements: this.hasMoreElements()
-        });
       },
       error: (error) => {
         console.error('Error searching products:', error);

@@ -43,11 +43,7 @@ export class ProductService {
       body.params.sort = sort;
     }
 
-    console.log('API Request:', { method: 'POST', url: this.apiUrl, body });
-
-    return this.http.post<ProductSearchResponse>(this.apiUrl, body).pipe(
-      tap(response => console.log('API Response:', response))
-    );
+    return this.http.post<ProductSearchResponse>(this.apiUrl, body);
   }
 
   getProduct(id: number): Observable<Product> {

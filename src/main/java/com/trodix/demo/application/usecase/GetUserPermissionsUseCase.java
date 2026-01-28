@@ -63,7 +63,8 @@ public class GetUserPermissionsUseCase {
                         break;
                 }
 
-                if (isConfigurable) {
+                // Exclure la relation "owner" sur les produits (attribuée automatiquement à la création)
+                if (isConfigurable && !(objectType.equals("product") && relation.equals("owner"))) {
                     permissions.add(new PermissionTuple(objectType, objectId, relation));
                 }
             }
