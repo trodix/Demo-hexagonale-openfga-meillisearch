@@ -7,7 +7,8 @@ import {
   UserListResponse,
   UserPermissionsResponse,
   AddPermissionRequest,
-  EntityListResponse
+  EntityListResponse,
+  TenantListResponse
 } from '../models/permission.model';
 
 @Injectable({
@@ -28,6 +29,12 @@ export class PermissionService {
     return this.http.get<UserPermissionsResponse>(`/api/admin/users/${username}/permissions`);
   }
 
+  getUserPermissionsForTenant(username: string, tenantId: string): Observable<UserPermissionsResponse> {
+    return this.http.get<UserPermissionsResponse>(
+      `/api/admin/users/${username}/permissions?tenantId=${tenantId}`
+    );
+  }
+
   addPermission(request: AddPermissionRequest): Observable<void> {
     return this.http.post<void>('/api/admin/permissions', request);
   }
@@ -38,5 +45,9 @@ export class PermissionService {
 
   listEntities(): Observable<EntityListResponse> {
     return this.http.get<EntityListResponse>('/api/admin/entities');
+  }
+
+  listAdminTenants(): Observable<TenantListResponse> {
+    return this.http.get<TenantListResponse>('/api/admin/tenants');
   }
 }

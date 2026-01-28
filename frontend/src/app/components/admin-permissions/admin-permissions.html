@@ -59,109 +59,183 @@
         <mat-card-title>Permissions de {{ selectedUser()!.username }}</mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <!-- Membership au tenant -->
+
+        <!-- 1. Membership aux Tenants -->
         <div class="permission-group">
-          <h3>Membre du Tenant</h3>
-          <button
-            mat-raised-button
-            [color]="isTenantMember() ? 'warn' : 'primary'"
-            (click)="toggleTenantMembership()"
-          >
-            @if (isTenantMember()) {
-              Retirer du tenant
-            } @else {
-              Ajouter au tenant
-            }
-          </button>
+          <h3>Membership aux Tenants</h3>
+
+          @if (loadingPermissions()) {
+            <mat-spinner diameter="40"></mat-spinner>
+          } @else if (tenantRows().length > 0) {
+            <table mat-table [dataSource]="tenantRows()" class="permissions-table">
+              <!-- Colonne Nom du Tenant -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Tenant</th>
+                <td mat-cell *matCellDef="let row">{{ row.tenant.name }}</td>
+              </ng-container>
+
+              <!-- Colonne Membre -->
+              <ng-container matColumnDef="member">
+                <th mat-header-cell *matHeaderCellDef>Membre</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-checkbox
+                    [checked]="row.isMember"
+                    (change)="toggleTenantMembership(row.tenant.id, row.isMember)"
+                  />
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="tenantColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: tenantColumns"></tr>
+            </table>
+          } @else {
+            <p class="no-data">Aucun tenant accessible</p>
+          }
         </div>
 
-        <!-- Permissions sur les entités -->
+        <!-- 2. Permissions sur les Entités -->
         <div class="permission-group">
           <h3>Permissions sur les Entités</h3>
-          <div class="permission-form">
-            <mat-form-field appearance="outline">
-              <mat-label>Entité</mat-label>
-              <mat-select [formControl]="entityControl">
-                @for (entity of entities(); track entity.id) {
-                  <mat-option [value]="entity.id">{{ entity.name }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
 
-            <mat-form-field appearance="outline">
-              <mat-label>Relation</mat-label>
-              <mat-select [formControl]="entityRelationControl">
-                @for (relation of availableEntityRelations(); track relation) {
-                  <mat-option [value]="relation">{{ relation }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+          @if (loadingPermissions()) {
+            <mat-spinner diameter="40"></mat-spinner>
+          } @else if (entityRows().length > 0) {
+            <table mat-table [dataSource]="entityRows()" class="permissions-table">
+              <!-- Colonne Nom de l'Entité -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Entité</th>
+                <td mat-cell *matCellDef="let row">{{ row.entity.name }}</td>
+              </ng-container>
 
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="addEntityPermission()"
-              [disabled]="!entityControl.value || !entityRelationControl.value"
-            >
-              Ajouter
-            </button>
-          </div>
+              <!-- Colonne Read -->
+              <ng-container matColumnDef="read">
+                <th mat-header-cell *matHeaderCellDef>Read</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-checkbox
+                    [checked]="row.hasRead"
+                    [disabled]="!row.entity.availableRelations.includes('read')"
+                    (change)="toggleEntityPermission(row.entity.id, 'read', row.hasRead)"
+                  />
+                </td>
+              </ng-container>
+
+              <!-- Colonne Write -->
+              <ng-container matColumnDef="write">
+                <th mat-header-cell *matHeaderCellDef>Write</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-checkbox
+                    [checked]="row.hasWrite"
+                    [disabled]="!row.entity.availableRelations.includes('write')"
+                    (change)="toggleEntityPermission(row.entity.id, 'write', row.hasWrite)"
+                  />
+                </td>
+              </ng-container>
+
+              <!-- Colonne Delete -->
+              <ng-container matColumnDef="delete">
+                <th mat-header-cell *matHeaderCellDef>Delete</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-checkbox
+                    [checked]="row.hasDelete"
+                    [disabled]="!row.entity.availableRelations.includes('delete')"
+                    (change)="toggleEntityPermission(row.entity.id, 'delete', row.hasDelete)"
+                  />
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="entityColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: entityColumns"></tr>
+            </table>
+          } @else {
+            <p class="no-data">Aucune entité disponible</p>
+          }
         </div>
 
-        <!-- Permissions sur les produits -->
+        <!-- 3. Permissions sur les Produits -->
         <div class="permission-group">
-          <h3>Permissions sur les Produits</h3>
-          <div class="permission-form">
+          <h3>Permissions directes sur les Produits</h3>
+
+          <!-- Formulaire d'ajout -->
+          <div class="add-product-form">
             <mat-form-field appearance="outline">
               <mat-label>ID du produit</mat-label>
               <input matInput [formControl]="productIdControl" type="number" />
             </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Relation</mat-label>
-              <mat-select [formControl]="productRelationControl">
-                @for (relation of productRelations; track relation) {
-                  <mat-option [value]="relation">{{ relation }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
             <button
               mat-raised-button
               color="primary"
-              (click)="addProductPermission()"
-              [disabled]="!productIdControl.value || !productRelationControl.value"
+              (click)="addProduct()"
+              [disabled]="!productIdControl.value"
             >
               Ajouter
             </button>
           </div>
-        </div>
-
-        <!-- Liste des permissions actuelles -->
-        <div class="permission-group">
-          <h3>Permissions Actuelles</h3>
 
           @if (loadingPermissions()) {
             <mat-spinner diameter="40"></mat-spinner>
-          }
+          } @else if (productRows().length > 0) {
+            <table mat-table [dataSource]="productRows()" class="permissions-table">
+              <!-- Colonne ID Produit -->
+              <ng-container matColumnDef="productId">
+                <th mat-header-cell *matHeaderCellDef>ID Produit</th>
+                <td mat-cell *matCellDef="let row">{{ row.productId }}</td>
+              </ng-container>
 
-          @if (!loadingPermissions() && userPermissions().length > 0) {
-            <div class="permissions-list">
-              @for (permission of userPermissions(); track permission) {
-                <mat-chip-row (removed)="removePermission(permission)">
-                  {{ permission.objectType }}:{{ permission.objectId }} - {{ permission.relation }}
-                  <button matChipRemove>
-                    <mat-icon>cancel</mat-icon>
+              <!-- Colonne Read -->
+              <ng-container matColumnDef="read">
+                <th mat-header-cell *matHeaderCellDef>Read</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-checkbox
+                    [checked]="row.hasRead"
+                    (change)="toggleProductPermission(row.productId, 'read', row.hasRead)"
+                  />
+                </td>
+              </ng-container>
+
+              <!-- Colonne Write -->
+              <ng-container matColumnDef="write">
+                <th mat-header-cell *matHeaderCellDef>Write</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-checkbox
+                    [checked]="row.hasWrite"
+                    (change)="toggleProductPermission(row.productId, 'write', row.hasWrite)"
+                  />
+                </td>
+              </ng-container>
+
+              <!-- Colonne Delete -->
+              <ng-container matColumnDef="delete">
+                <th mat-header-cell *matHeaderCellDef>Delete</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-checkbox
+                    [checked]="row.hasDelete"
+                    (change)="toggleProductPermission(row.productId, 'delete', row.hasDelete)"
+                  />
+                </td>
+              </ng-container>
+
+              <!-- Colonne Actions -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let row">
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="removeProduct(row.productId)"
+                    aria-label="Supprimer toutes les permissions">
+                    <mat-icon>delete</mat-icon>
                   </button>
-                </mat-chip-row>
-              }
-            </div>
-          }
+                </td>
+              </ng-container>
 
-          @if (!loadingPermissions() && userPermissions().length === 0) {
-            <p class="no-permissions">Aucune permission</p>
+              <tr mat-header-row *matHeaderRowDef="productColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: productColumns"></tr>
+            </table>
+          } @else {
+            <p class="no-data">Aucune permission directe sur un produit</p>
           }
         </div>
+
       </mat-card-content>
     </mat-card>
   }

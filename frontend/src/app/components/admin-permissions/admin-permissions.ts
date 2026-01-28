@@ -1,25 +1,27 @@
 import { Component, signal, computed, inject, ChangeDetectionStrategy, OnInit } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PermissionService } from '../../services/permission.service';
-import { AuthService } from '../../services/auth.service';
 import {
   UserInfo,
   PermissionTuple,
   AddPermissionRequest,
-  EntityInfo
+  EntityInfo,
+  TenantInfo,
+  TenantMembershipRow,
+  EntityPermissionRow,
+  ProductPermissionRow
 } from '../../models/permission.model';
 
 @Component({
@@ -31,11 +33,10 @@ import {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
     MatTableModule,
     MatCardModule,
-    MatChipsModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatCheckboxModule
   ],
   templateUrl: './admin-permissions.html',
   styleUrl: './admin-permissions.scss',
@@ -43,28 +44,29 @@ import {
 })
 export class AdminPermissions implements OnInit {
   private readonly permissionService = inject(PermissionService);
-  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
-  protected readonly users = signal<UserInfo[]>([]);
-  protected readonly selectedUser = signal<UserInfo | null>(null);
-  protected readonly userPermissions = signal<PermissionTuple[]>([]);
-  protected readonly entities = signal<EntityInfo[]>([]);
+  // État de chargement
   protected readonly loading = signal(false);
   protected readonly loadingPermissions = signal(false);
 
-  protected readonly searchControl = new FormControl('');
-  protected readonly entityControl = new FormControl<string | null>(null);
-  protected readonly entityRelationControl = new FormControl<string | null>(null);
-  protected readonly productIdControl = new FormControl('');
-  protected readonly productRelationControl = new FormControl<string | null>(null);
+  // Données de base
+  protected readonly users = signal<UserInfo[]>([]);
+  protected readonly selectedUser = signal<UserInfo | null>(null);
+  protected readonly tenants = signal<TenantInfo[]>([]);
+  protected readonly entities = signal<EntityInfo[]>([]);
 
-  // Convertir les valueChanges en signals pour la réactivité
-  protected readonly selectedEntityId = toSignal(this.entityControl.valueChanges, { initialValue: null });
+  // Permissions brutes de l'utilisateur
+  protected readonly userPermissions = signal<PermissionTuple[]>([]);
+
+  protected readonly searchControl = new FormControl('');
+  protected readonly productIdControl = new FormControl('');
 
   protected readonly displayedColumns = ['username', 'displayName', 'actions'];
-  protected readonly productRelations = ['read', 'write', 'delete'];
+  protected readonly tenantColumns = ['name', 'member'];
+  protected readonly entityColumns = ['name', 'read', 'write', 'delete'];
+  protected readonly productColumns = ['productId', 'read', 'write', 'delete', 'actions'];
 
   protected readonly filteredUsers = computed(() => {
     const search = this.searchControl.value?.toLowerCase() || '';
@@ -74,29 +76,76 @@ export class AdminPermissions implements OnInit {
     );
   });
 
-  protected readonly availableEntityRelations = computed(() => {
-    const entityId = this.selectedEntityId();
-    if (!entityId) {
-      return [];
-    }
-    const entity = this.entities().find(e => e.id === entityId);
-    return entity?.availableRelations || [];
+  // Tableaux structurés pour l'affichage
+  protected readonly tenantRows = computed<TenantMembershipRow[]>(() => {
+    const tenants = this.tenants();
+    const permissions = this.userPermissions();
+
+    return tenants.map(tenant => ({
+      tenant,
+      isMember: permissions.some(p =>
+        p.objectType === 'tenant' &&
+        p.objectId === tenant.id &&
+        p.relation === 'member'
+      )
+    }));
   });
 
-  protected readonly isTenantMember = computed(() => {
-    const user = this.selectedUser();
-    const tenantId = this.authService.tenantId();
-    if (!user || !tenantId) return false;
-    return this.userPermissions().some(p =>
-      p.objectType === 'tenant' &&
-      p.objectId === tenantId &&
-      p.relation === 'member'
-    );
+  protected readonly entityRows = computed<EntityPermissionRow[]>(() => {
+    const entities = this.entities();
+    const permissions = this.userPermissions();
+
+    return entities.map(entity => ({
+      entity,
+      hasRead: permissions.some(p =>
+        p.objectType === 'entity' &&
+        p.objectId === entity.id &&
+        p.relation === 'read'
+      ),
+      hasWrite: permissions.some(p =>
+        p.objectType === 'entity' &&
+        p.objectId === entity.id &&
+        p.relation === 'write'
+      ),
+      hasDelete: permissions.some(p =>
+        p.objectType === 'entity' &&
+        p.objectId === entity.id &&
+        p.relation === 'delete'
+      )
+    }));
+  });
+
+  protected readonly productRows = computed<ProductPermissionRow[]>(() => {
+    const permissions = this.userPermissions();
+
+    // Grouper les permissions produits par productId
+    const productMap = new Map<string, ProductPermissionRow>();
+
+    permissions
+      .filter(p => p.objectType === 'product')
+      .forEach(p => {
+        if (!productMap.has(p.objectId)) {
+          productMap.set(p.objectId, {
+            productId: p.objectId,
+            hasRead: false,
+            hasWrite: false,
+            hasDelete: false
+          });
+        }
+
+        const row = productMap.get(p.objectId)!;
+        if (p.relation === 'read') row.hasRead = true;
+        if (p.relation === 'write') row.hasWrite = true;
+        if (p.relation === 'delete') row.hasDelete = true;
+      });
+
+    return Array.from(productMap.values());
   });
 
   ngOnInit(): void {
     this.loadUsers();
     this.loadEntities();
+    this.loadAdminTenants();
   }
 
   private loadUsers(): void {
@@ -122,6 +171,15 @@ export class AdminPermissions implements OnInit {
     });
   }
 
+  private loadAdminTenants(): void {
+    this.permissionService.listAdminTenants().subscribe({
+      next: (response) => {
+        this.tenants.set(response.tenants);
+      },
+      error: (err) => console.error('Error loading tenants:', err)
+    });
+  }
+
   protected selectUser(user: UserInfo): void {
     this.selectedUser.set(user);
     this.loadUserPermissions(user.username);
@@ -141,10 +199,9 @@ export class AdminPermissions implements OnInit {
     });
   }
 
-  protected toggleTenantMembership(): void {
+  protected toggleTenantMembership(tenantId: string, currentValue: boolean): void {
     const user = this.selectedUser();
-    const tenantId = this.authService.tenantId();
-    if (!user || !tenantId) return;
+    if (!user) return;
 
     const request: AddPermissionRequest = {
       username: user.username,
@@ -153,95 +210,197 @@ export class AdminPermissions implements OnInit {
       relation: 'member'
     };
 
-    const action = this.isTenantMember()
+    const action = currentValue
       ? this.permissionService.removePermission(request)
       : this.permissionService.addPermission(request);
 
     action.subscribe({
       next: () => {
-        this.loadUserPermissions(user.username);
-        this.showNotification('Permission mise à jour');
+        // Mise à jour optimiste locale
+        if (currentValue) {
+          // Retirer la permission
+          this.userPermissions.update(perms =>
+            perms.filter(p =>
+              !(p.objectType === 'tenant' && p.objectId === tenantId && p.relation === 'member')
+            )
+          );
+        } else {
+          // Ajouter la permission
+          this.userPermissions.update(perms => [
+            ...perms,
+            { objectType: 'tenant', objectId: tenantId, relation: 'member' }
+          ]);
+        }
+        this.showNotification(currentValue ? 'Retiré du tenant' : 'Ajouté au tenant');
       },
       error: (err) => {
-        console.error('Error updating permission:', err);
-        this.showNotification('Erreur lors de la mise à jour');
+        console.error('Error toggling tenant membership:', err);
+        this.showNotification('Erreur lors de la modification');
+        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
+        this.loadUserPermissions(user.username);
       }
     });
   }
 
-  protected addEntityPermission(): void {
-    const user = this.selectedUser();
-    const entityId = this.entityControl.value;
-    const relation = this.entityRelationControl.value;
-    if (!user || !entityId || !relation) return;
-
-    const request: AddPermissionRequest = {
-      username: user.username,
-      objectType: 'entity',
-      objectId: entityId,
-      relation: relation
-    };
-
-    this.permissionService.addPermission(request).subscribe({
-      next: () => {
-        this.loadUserPermissions(user.username);
-        this.entityControl.setValue(null);
-        this.entityRelationControl.setValue(null);
-        this.showNotification('Permission ajoutée');
-      },
-      error: (err) => {
-        console.error('Error adding permission:', err);
-        this.showNotification('Erreur lors de l\'ajout');
-      }
-    });
-  }
-
-  protected removePermission(permission: PermissionTuple): void {
+  protected toggleEntityPermission(
+    entityId: string,
+    relation: 'read' | 'write' | 'delete',
+    currentValue: boolean
+  ): void {
     const user = this.selectedUser();
     if (!user) return;
 
     const request: AddPermissionRequest = {
       username: user.username,
-      objectType: permission.objectType,
-      objectId: permission.objectId,
-      relation: permission.relation
+      objectType: 'entity',
+      objectId: entityId,
+      relation
     };
 
-    this.permissionService.removePermission(request).subscribe({
+    const action = currentValue
+      ? this.permissionService.removePermission(request)
+      : this.permissionService.addPermission(request);
+
+    action.subscribe({
       next: () => {
-        this.loadUserPermissions(user.username);
-        this.showNotification('Permission supprimée');
+        // Mise à jour optimiste locale
+        if (currentValue) {
+          // Retirer la permission
+          this.userPermissions.update(perms =>
+            perms.filter(p =>
+              !(p.objectType === 'entity' && p.objectId === entityId && p.relation === relation)
+            )
+          );
+        } else {
+          // Ajouter la permission
+          this.userPermissions.update(perms => [
+            ...perms,
+            { objectType: 'entity', objectId: entityId, relation }
+          ]);
+        }
+        this.showNotification('Permission mise à jour');
       },
       error: (err) => {
-        console.error('Error removing permission:', err);
-        this.showNotification('Erreur lors de la suppression');
+        console.error('Error toggling entity permission:', err);
+        this.showNotification('Erreur lors de la modification');
+        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
+        this.loadUserPermissions(user.username);
       }
     });
   }
 
-  protected addProductPermission(): void {
+  protected toggleProductPermission(
+    productId: string,
+    relation: 'read' | 'write' | 'delete',
+    currentValue: boolean
+  ): void {
     const user = this.selectedUser();
-    const productId = this.productIdControl.value;
-    const relation = this.productRelationControl.value;
-    if (!user || !productId || !relation) return;
+    if (!user) return;
 
     const request: AddPermissionRequest = {
       username: user.username,
       objectType: 'product',
       objectId: productId,
-      relation: relation
+      relation
+    };
+
+    const action = currentValue
+      ? this.permissionService.removePermission(request)
+      : this.permissionService.addPermission(request);
+
+    action.subscribe({
+      next: () => {
+        // Mise à jour optimiste locale
+        if (currentValue) {
+          // Retirer la permission
+          this.userPermissions.update(perms =>
+            perms.filter(p =>
+              !(p.objectType === 'product' && p.objectId === productId && p.relation === relation)
+            )
+          );
+        } else {
+          // Ajouter la permission
+          this.userPermissions.update(perms => [
+            ...perms,
+            { objectType: 'product', objectId: productId, relation }
+          ]);
+        }
+        this.showNotification('Permission mise à jour');
+      },
+      error: (err) => {
+        console.error('Error toggling product permission:', err);
+        this.showNotification('Erreur lors de la modification');
+        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
+        this.loadUserPermissions(user.username);
+      }
+    });
+  }
+
+  protected addProduct(): void {
+    const user = this.selectedUser();
+    const productId = this.productIdControl.value;
+    if (!user || !productId) return;
+
+    // Ajouter une permission read par défaut
+    const request: AddPermissionRequest = {
+      username: user.username,
+      objectType: 'product',
+      objectId: productId,
+      relation: 'read'
     };
 
     this.permissionService.addPermission(request).subscribe({
       next: () => {
-        this.loadUserPermissions(user.username);
+        // Mise à jour optimiste locale
+        this.userPermissions.update(perms => [
+          ...perms,
+          { objectType: 'product', objectId: productId, relation: 'read' }
+        ]);
         this.productIdControl.setValue('');
-        this.productRelationControl.setValue(null);
-        this.showNotification('Permission ajoutée');
+        this.showNotification('Produit ajouté');
       },
       error: (err) => {
-        console.error('Error adding permission:', err);
+        console.error('Error adding product:', err);
         this.showNotification('Erreur lors de l\'ajout');
+        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
+        this.loadUserPermissions(user.username);
+      }
+    });
+  }
+
+  protected removeProduct(productId: string): void {
+    const user = this.selectedUser();
+    if (!user) return;
+
+    // Supprimer toutes les permissions pour ce produit
+    const permissions = this.userPermissions().filter(
+      p => p.objectType === 'product' && p.objectId === productId
+    );
+
+    // Créer des observables pour chaque suppression
+    const deletions = permissions.map(p =>
+      this.permissionService.removePermission({
+        username: user.username,
+        objectType: p.objectType,
+        objectId: p.objectId,
+        relation: p.relation
+      })
+    );
+
+    // Exécuter toutes les suppressions en parallèle
+    forkJoin(deletions).subscribe({
+      next: () => {
+        // Mise à jour optimiste locale - retirer toutes les permissions du produit
+        this.userPermissions.update(perms =>
+          perms.filter(p => !(p.objectType === 'product' && p.objectId === productId))
+        );
+        this.showNotification('Produit supprimé');
+      },
+      error: (err) => {
+        console.error('Error removing product:', err);
+        this.showNotification('Erreur lors de la suppression');
+        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
+        this.loadUserPermissions(user.username);
       }
     });
   }

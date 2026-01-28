@@ -9,6 +9,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class PermissionsRestAdapter {
@@ -19,6 +21,7 @@ public class PermissionsRestAdapter {
     private final AddPermissionUseCase addPermissionUseCase;
     private final RemovePermissionUseCase removePermissionUseCase;
     private final ListEntitiesUseCase listEntitiesUseCase;
+    private final ListAdminTenantsUseCase listAdminTenantsUseCase;
     private final SpringAuthenticationAdapter auth;
 
     @PostMapping(value = "/api/permissions/check", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -37,9 +40,26 @@ public class PermissionsRestAdapter {
     @GetMapping(value = "/api/admin/users/{username}/permissions", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
-    public UserPermissionsResponse getUserPermissions(@PathVariable String username) {
-        String tenantId = auth.getTenant();
-        return getUserPermissionsUseCase.getUserPermissions(username, tenantId);
+    public UserPermissionsResponse getUserPermissions(
+        @PathVariable String username,
+        @RequestParam(required = false) String tenantId
+    ) {
+        // Si tenantId non fourni, utiliser celui de l'utilisateur connecté
+        String targetTenant = tenantId != null ? tenantId : auth.getTenant();
+
+        // Vérifier que l'utilisateur connecté est admin du tenant ciblé
+        String connectedUser = auth.getUsername();
+        boolean isAdmin = checkPermissionsUseCase.checkPermissions(
+            new PermissionCheckRequest(List.of(
+                new CheckItem("tenant:" + targetTenant, "admin")
+            ))
+        ).getResults().get("tenant:" + targetTenant + " admin");
+
+        if (!isAdmin) {
+            throw new com.trodix.demo.application.exceptions.AuthorizationException("Not admin of this tenant");
+        }
+
+        return getUserPermissionsUseCase.getUserPermissions(username, targetTenant);
     }
 
     @PostMapping(value = "/api/admin/permissions", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -61,5 +81,12 @@ public class PermissionsRestAdapter {
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
     public EntityListResponse listEntities() {
         return listEntitiesUseCase.listEntities();
+    }
+
+    @GetMapping(value = "/api/admin/tenants", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public TenantListResponse listAdminTenants() {
+        String username = auth.getUsername();
+        return listAdminTenantsUseCase.listAdminTenants(username);
     }
 }

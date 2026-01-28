@@ -48,3 +48,31 @@ export interface EntityInfo {
 export interface EntityListResponse {
   entities: EntityInfo[];
 }
+
+export interface TenantInfo {
+  id: string;
+  name: string;
+}
+
+export interface TenantListResponse {
+  tenants: TenantInfo[];
+}
+
+export interface EntityPermissionRow {
+  entity: EntityInfo;
+  hasRead: boolean;
+  hasWrite: boolean;
+  hasDelete: boolean;
+}
+
+export interface ProductPermissionRow {
+  productId: string;
+  hasRead: boolean;
+  hasWrite: boolean;
+  hasDelete: boolean;
+}
+
+export interface TenantMembershipRow {
+  tenant: TenantInfo;
+  isMember: boolean;
+}
