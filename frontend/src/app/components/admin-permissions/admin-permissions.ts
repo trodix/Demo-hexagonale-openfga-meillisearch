@@ -14,6 +14,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PermissionService } from '../../services/permission.service';
+import { AuthService } from '../../services/auth.service';
 import {
   UserInfo,
   PermissionTuple,
@@ -47,6 +48,7 @@ import {
 })
 export class AdminPermissions implements OnInit {
   private readonly permissionService = inject(PermissionService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -59,6 +61,7 @@ export class AdminPermissions implements OnInit {
   protected readonly selectedUser = signal<UserInfo | null>(null);
   protected readonly tenants = signal<TenantInfo[]>([]);
   protected readonly entities = signal<EntityInfo[]>([]);
+  protected readonly currentTenantId = this.authService.tenantId;
 
   // Permissions brutes de l'utilisateur (pour les updates optimistes des tenants)
   protected readonly userPermissions = signal<PermissionTuple[]>([]);
@@ -70,7 +73,7 @@ export class AdminPermissions implements OnInit {
   protected readonly productIdControl = new FormControl('');
 
   protected readonly displayedColumns = ['username', 'displayName', 'actions'];
-  protected readonly tenantColumns = ['name', 'member'];
+  protected readonly tenantColumns = ['name', 'member', 'admin'];
   protected readonly entityColumns = ['name', 'read', 'write', 'delete'];
   protected readonly productColumns = ['productId', 'read', 'write', 'delete', 'actions'];
 
@@ -84,17 +87,45 @@ export class AdminPermissions implements OnInit {
 
   // Tableaux structurés pour l'affichage
   protected readonly tenantRows = computed<TenantMembershipRow[]>(() => {
+    const enriched = this.enrichedPermissions();
     const tenants = this.tenants();
-    const permissions = this.userPermissions();
+    const selectedUser = this.selectedUser();
+    const currentUser = this.authService.username();
+    const currentTenant = this.currentTenantId();
 
-    return tenants.map(tenant => ({
-      tenant,
-      isMember: permissions.some(p =>
-        p.objectType === 'tenant' &&
-        p.objectId === tenant.id &&
-        p.relation === 'member'
-      )
-    }));
+    if (!enriched) {
+      // Pas encore de données enrichies, retourner des données vides
+      return tenants.map(tenant => ({
+        tenant,
+        isMember: false,
+        isAdmin: false,
+        isCurrentTenantForCurrentUser: false
+      }));
+    }
+
+    // Mapper les données enrichies du backend vers nos rows
+    return tenants.map(tenant => {
+      const enrichedTenant = enriched.tenants.find(t => t.tenantId === tenant.id);
+      const isCurrentTenantForCurrentUser =
+        selectedUser?.username === currentUser &&
+        tenant.id === currentTenant;
+
+      if (!enrichedTenant) {
+        return {
+          tenant,
+          isMember: false,
+          isAdmin: false,
+          isCurrentTenantForCurrentUser
+        };
+      }
+
+      return {
+        tenant,
+        isMember: enrichedTenant.isMember,
+        isAdmin: enrichedTenant.isAdmin,
+        isCurrentTenantForCurrentUser
+      };
+    });
   });
 
   protected readonly entityRows = computed<EntityPermissionRow[]>(() => {
@@ -250,31 +281,25 @@ export class AdminPermissions implements OnInit {
 
     action.subscribe({
       next: () => {
-        // Mise à jour optimiste locale
-        if (currentValue) {
-          // Retirer la permission
-          this.userPermissions.update(perms =>
-            perms.filter(p =>
-              !(p.objectType === 'tenant' && p.objectId === tenantId && p.relation === 'member')
-            )
-          );
-        } else {
-          // Ajouter la permission
-          this.userPermissions.update(perms => [
-            ...perms,
-            { objectType: 'tenant', objectId: tenantId, relation: 'member' }
-          ]);
-        }
-        this.showNotification(currentValue ? 'Retiré du tenant' : 'Ajouté au tenant');
+        // Recharger les permissions enrichies
+        this.permissionService.getEnrichedPermissions(user.username).subscribe({
+          next: (response) => {
+            this.enrichedPermissions.set(response);
+            this.showNotification(currentValue ? 'Retiré du tenant' : 'Ajouté au tenant');
+          },
+          error: (err) => {
+            console.error('Error reloading enriched permissions:', err);
+            this.showNotification('Membership mis à jour (rechargement échoué)');
+          }
+        });
       },
       error: (err) => {
         console.error('Error toggling tenant membership:', err);
         this.showNotification('Erreur lors de la modification');
-        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
-        this.loadUserPermissions(user.username);
       }
     });
   }
+
 
   protected toggleEntityPermission(
     entityId: string,

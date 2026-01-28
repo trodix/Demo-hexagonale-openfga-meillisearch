@@ -78,10 +78,31 @@
               <ng-container matColumnDef="member">
                 <th mat-header-cell *matHeaderCellDef>Membre</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-checkbox
-                    [checked]="row.isMember"
-                    (change)="toggleTenantMembership(row.tenant.id, row.isMember)"
-                  />
+                  <span
+                    [matTooltip]="row.isCurrentTenantForCurrentUser ? 'Impossible de retirer votre propre appartenance au tenant actuel' : ''"
+                    [matTooltipDisabled]="!row.isCurrentTenantForCurrentUser"
+                  >
+                    <mat-checkbox
+                      [checked]="row.isMember"
+                      [disabled]="row.isCurrentTenantForCurrentUser"
+                      (change)="toggleTenantMembership(row.tenant.id, row.isMember)"
+                    />
+                  </span>
+                </td>
+              </ng-container>
+
+              <!-- Colonne Admin -->
+              <ng-container matColumnDef="admin">
+                <th mat-header-cell *matHeaderCellDef>Admin</th>
+                <td mat-cell *matCellDef="let row">
+                  <span
+                    matTooltip="Seul un super admin peut gérer les admins de tenant"
+                  >
+                    <mat-checkbox
+                      [checked]="row.isAdmin"
+                      [disabled]="true"
+                    />
+                  </span>
                 </td>
               </ng-container>
 
@@ -111,13 +132,17 @@
               <ng-container matColumnDef="read">
                 <th mat-header-cell *matHeaderCellDef>Read</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-checkbox
-                    [checked]="row.hasRead"
-                    [disabled]="!row.entity.availableRelations.includes('read') || row.readIsIndirect"
-                    [matTooltip]="row.readIsIndirect ? 'Permission indirecte via admin' : ''"
-                    [class.indirect-permission]="row.readIsIndirect"
-                    (change)="toggleEntityPermission(row.entity.id, 'read', row.hasRead)"
-                  />
+                  <span
+                    [matTooltip]="row.readIsIndirect ? 'Permission indirecte (member ou admin du tenant parent)' : ''"
+                    [matTooltipDisabled]="!row.readIsIndirect"
+                  >
+                    <mat-checkbox
+                      [checked]="row.hasRead"
+                      [disabled]="!row.entity.availableRelations.includes('read') || row.readIsIndirect"
+                      [class.indirect-permission]="row.readIsIndirect"
+                      (change)="toggleEntityPermission(row.entity.id, 'read', row.hasRead)"
+                    />
+                  </span>
                 </td>
               </ng-container>
 
@@ -125,13 +150,17 @@
               <ng-container matColumnDef="write">
                 <th mat-header-cell *matHeaderCellDef>Write</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-checkbox
-                    [checked]="row.hasWrite"
-                    [disabled]="!row.entity.availableRelations.includes('write') || row.writeIsIndirect"
-                    [matTooltip]="row.writeIsIndirect ? 'Permission indirecte via admin' : ''"
-                    [class.indirect-permission]="row.writeIsIndirect"
-                    (change)="toggleEntityPermission(row.entity.id, 'write', row.hasWrite)"
-                  />
+                  <span
+                    [matTooltip]="row.writeIsIndirect ? 'Permission indirecte (admin du tenant parent)' : ''"
+                    [matTooltipDisabled]="!row.writeIsIndirect"
+                  >
+                    <mat-checkbox
+                      [checked]="row.hasWrite"
+                      [disabled]="!row.entity.availableRelations.includes('write') || row.writeIsIndirect"
+                      [class.indirect-permission]="row.writeIsIndirect"
+                      (change)="toggleEntityPermission(row.entity.id, 'write', row.hasWrite)"
+                    />
+                  </span>
                 </td>
               </ng-container>
 
@@ -139,13 +168,17 @@
               <ng-container matColumnDef="delete">
                 <th mat-header-cell *matHeaderCellDef>Delete</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-checkbox
-                    [checked]="row.hasDelete"
-                    [disabled]="!row.entity.availableRelations.includes('delete') || row.deleteIsIndirect"
-                    [matTooltip]="row.deleteIsIndirect ? 'Permission indirecte via admin' : ''"
-                    [class.indirect-permission]="row.deleteIsIndirect"
-                    (change)="toggleEntityPermission(row.entity.id, 'delete', row.hasDelete)"
-                  />
+                  <span
+                    [matTooltip]="row.deleteIsIndirect ? 'Permission indirecte (admin du tenant parent)' : ''"
+                    [matTooltipDisabled]="!row.deleteIsIndirect"
+                  >
+                    <mat-checkbox
+                      [checked]="row.hasDelete"
+                      [disabled]="!row.entity.availableRelations.includes('delete') || row.deleteIsIndirect"
+                      [class.indirect-permission]="row.deleteIsIndirect"
+                      (change)="toggleEntityPermission(row.entity.id, 'delete', row.hasDelete)"
+                    />
+                  </span>
                 </td>
               </ng-container>
 
@@ -191,13 +224,17 @@
               <ng-container matColumnDef="read">
                 <th mat-header-cell *matHeaderCellDef>Read</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-checkbox
-                    [checked]="row.hasRead"
-                    [disabled]="row.readIsIndirect"
-                    [matTooltip]="row.readIsIndirect ? 'Permission indirecte via admin' : ''"
-                    [class.indirect-permission]="row.readIsIndirect"
-                    (change)="toggleProductPermission(row.productId, 'read', row.hasRead)"
-                  />
+                  <span
+                    [matTooltip]="row.readIsIndirect ? 'Permission indirecte (owner ou héritée de l\'entité parent)' : ''"
+                    [matTooltipDisabled]="!row.readIsIndirect"
+                  >
+                    <mat-checkbox
+                      [checked]="row.hasRead"
+                      [disabled]="row.readIsIndirect"
+                      [class.indirect-permission]="row.readIsIndirect"
+                      (change)="toggleProductPermission(row.productId, 'read', row.hasRead)"
+                    />
+                  </span>
                 </td>
               </ng-container>
 
@@ -205,13 +242,17 @@
               <ng-container matColumnDef="write">
                 <th mat-header-cell *matHeaderCellDef>Write</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-checkbox
-                    [checked]="row.hasWrite"
-                    [disabled]="row.writeIsIndirect"
-                    [matTooltip]="row.writeIsIndirect ? 'Permission indirecte via admin' : ''"
-                    [class.indirect-permission]="row.writeIsIndirect"
-                    (change)="toggleProductPermission(row.productId, 'write', row.hasWrite)"
-                  />
+                  <span
+                    [matTooltip]="row.writeIsIndirect ? 'Permission indirecte (owner ou héritée de l\'entité parent)' : ''"
+                    [matTooltipDisabled]="!row.writeIsIndirect"
+                  >
+                    <mat-checkbox
+                      [checked]="row.hasWrite"
+                      [disabled]="row.writeIsIndirect"
+                      [class.indirect-permission]="row.writeIsIndirect"
+                      (change)="toggleProductPermission(row.productId, 'write', row.hasWrite)"
+                    />
+                  </span>
                 </td>
               </ng-container>
 
@@ -219,13 +260,17 @@
               <ng-container matColumnDef="delete">
                 <th mat-header-cell *matHeaderCellDef>Delete</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-checkbox
-                    [checked]="row.hasDelete"
-                    [disabled]="row.deleteIsIndirect"
-                    [matTooltip]="row.deleteIsIndirect ? 'Permission indirecte via admin' : ''"
-                    [class.indirect-permission]="row.deleteIsIndirect"
-                    (change)="toggleProductPermission(row.productId, 'delete', row.hasDelete)"
-                  />
+                  <span
+                    [matTooltip]="row.deleteIsIndirect ? 'Permission indirecte (owner ou héritée de l\'entité parent)' : ''"
+                    [matTooltipDisabled]="!row.deleteIsIndirect"
+                  >
+                    <mat-checkbox
+                      [checked]="row.hasDelete"
+                      [disabled]="row.deleteIsIndirect"
+                      [class.indirect-permission]="row.deleteIsIndirect"
+                      (change)="toggleProductPermission(row.productId, 'delete', row.hasDelete)"
+                    />
+                  </span>
                 </td>
               </ng-container>
 

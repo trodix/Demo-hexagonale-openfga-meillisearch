@@ -108,6 +108,11 @@
     }
   }
 
+  span {
+    display: flex;
+    justify-content: center;
+  }
+
   mat-checkbox {
     display: flex;
     justify-content: center;

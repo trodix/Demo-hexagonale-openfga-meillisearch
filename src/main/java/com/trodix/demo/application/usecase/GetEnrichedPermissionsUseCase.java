@@ -18,25 +18,35 @@ import java.util.concurrent.ExecutionException;
 public class GetEnrichedPermissionsUseCase {
     private final OpenFgaClient fgaClient;
     private final ListEntitiesUseCase listEntitiesUseCase;
+    private final ListAdminTenantsUseCase listAdminTenantsUseCase;
 
     public EnrichedPermissionsResponse getEnrichedPermissions(String username, String tenantId) {
         try {
             // 1. Récupérer tous les tuples directs de l'utilisateur
             Set<String> directPermissions = getDirectPermissions(username);
 
-            // 2. Récupérer la liste des entités disponibles
+            // 2. Récupérer la liste des tenants où l'utilisateur est admin
+            TenantListResponse tenantsResponse = listAdminTenantsUseCase.listAdminTenants(username);
+
+            // 3. Vérifier les permissions pour chaque tenant
+            List<TenantPermissionStatus> tenantStatuses = new ArrayList<>();
+            for (TenantInfo tenant : tenantsResponse.tenants()) {
+                tenantStatuses.add(checkTenantPermissions(username, tenant, directPermissions));
+            }
+
+            // 4. Récupérer la liste des entités disponibles
             EntityListResponse entitiesResponse = listEntitiesUseCase.listEntities();
 
-            // 3. Vérifier les permissions pour chaque entité
+            // 5. Vérifier les permissions pour chaque entité
             List<EntityPermissionStatus> entityStatuses = new ArrayList<>();
             for (EntityInfo entity : entitiesResponse.getEntities()) {
                 entityStatuses.add(checkEntityPermissions(username, entity, directPermissions));
             }
 
-            // 4. Récupérer tous les produits pour lesquels l'utilisateur a des permissions
+            // 6. Récupérer tous les produits pour lesquels l'utilisateur a des permissions
             List<ProductPermissionStatus> productStatuses = checkProductPermissions(username, directPermissions);
 
-            return new EnrichedPermissionsResponse(username, tenantId, entityStatuses, productStatuses);
+            return new EnrichedPermissionsResponse(username, tenantId, tenantStatuses, entityStatuses, productStatuses);
         } catch (Exception e) {
             throw new RuntimeException("Error getting enriched permissions", e);
         }
@@ -56,6 +66,27 @@ public class GetEnrichedPermissionsUseCase {
         }
 
         return directPermissions;
+    }
+
+    private TenantPermissionStatus checkTenantPermissions(
+        String username,
+        TenantInfo tenant,
+        Set<String> directPermissions
+    ) throws Exception {
+        String tenantObject = "tenant:" + tenant.id();
+
+        // Vérifier member (toujours direct selon le modèle FGA)
+        boolean isMember = directPermissions.contains(tenantObject + "#member");
+
+        // Vérifier admin (toujours direct selon le modèle FGA)
+        boolean isAdmin = directPermissions.contains(tenantObject + "#admin");
+
+        return new TenantPermissionStatus(
+            tenant.id(),
+            tenant.name(),
+            isMember,
+            isAdmin
+        );
     }
 
     private EntityPermissionStatus checkEntityPermissions(

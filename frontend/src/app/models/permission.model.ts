@@ -81,6 +81,15 @@ export interface ProductPermissionRow {
 export interface TenantMembershipRow {
   tenant: TenantInfo;
   isMember: boolean;
+  isAdmin: boolean;
+  isCurrentTenantForCurrentUser: boolean;
+}
+
+export interface TenantPermissionStatusDto {
+  tenantId: string;
+  tenantName: string;
+  isMember: boolean;
+  isAdmin: boolean;
 }
 
 export interface PermissionStatus {
@@ -106,6 +115,7 @@ export interface ProductPermissionStatusDto {
 export interface EnrichedPermissionsResponse {
   username: string;
   tenantId: string;
+  tenants: TenantPermissionStatusDto[];
   entities: EntityPermissionStatusDto[];
   products: ProductPermissionStatusDto[];
 }
