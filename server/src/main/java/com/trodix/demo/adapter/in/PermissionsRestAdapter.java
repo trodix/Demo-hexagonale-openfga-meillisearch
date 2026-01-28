@@ -100,15 +100,26 @@ public class PermissionsRestAdapter {
         return getEnrichedPermissionsUseCase.getEnrichedPermissions(username, tenantId);
     }
 
-    @GetMapping(value = "/api/admin/users/{username}/products/{productId}/check", produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * Generic endpoint for checking a permission on any resource type.
+     * Replaces specific endpoints like /users/{username}/products/{productId}/check
+     *
+     * Example usage:
+     * - GET /api/admin/users/john/resources/product/123/check?relation=read
+     * - GET /api/admin/users/john/resources/entity/e1/check?relation=write
+     * - GET /api/admin/users/john/resources/tenant/t1/check?relation=admin
+     */
+    @GetMapping(value = "/api/admin/users/{username}/resources/{resourceType}/{resourceId}/check", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
-    public ProductPermissionCheckResponse checkProductPermission(
+    public GenericPermissionCheckResponse checkResourcePermission(
         @PathVariable String username,
-        @PathVariable String productId,
+        @PathVariable String resourceType,
+        @PathVariable String resourceId,
         @RequestParam String relation
     ) {
-        boolean allowed = checkProductPermissionUseCase.checkProductPermission(username, productId, relation);
-        return new ProductPermissionCheckResponse(username, productId, relation, allowed);
+        boolean allowed = checkProductPermissionUseCase.checkProductPermission(username, resourceId, relation);
+        return new GenericPermissionCheckResponse(username, resourceType, resourceId, relation, allowed);
     }
+
 }

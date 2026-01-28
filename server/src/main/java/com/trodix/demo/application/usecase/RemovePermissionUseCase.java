@@ -3,7 +3,9 @@ package com.trodix.demo.application.usecase;
 import com.trodix.demo.adapter.in.dto.AddPermissionRequest;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
+import dev.openfga.sdk.errors.FgaApiValidationError;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -12,12 +14,12 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RemovePermissionUseCase {
 
     private final OpenFgaClient fgaClient;
 
     public void removePermission(AddPermissionRequest request) {
-        // Validation: interdire la suppression de la relation "admin" sur tenant
         if ("tenant".equals(request.getObjectType()) && "admin".equals(request.getRelation())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -36,6 +38,14 @@ public class RemovePermissionUseCase {
 
             fgaClient.deleteTuples(List.of(tuple)).get();
         } catch (Exception e) {
+            if (e.getCause() instanceof FgaApiValidationError) {
+                FgaApiValidationError fgaError = (FgaApiValidationError) e.getCause();
+                if (fgaError.getMessage() != null && fgaError.getMessage().contains("did not exist")) {
+                    log.debug("Tuple does not exist, ignoring: user={}, object={}, relation={}",
+                        request.getUsername(), request.getObjectId(), request.getRelation());
+                    return;
+                }
+            }
             throw new RuntimeException("Error removing permission", e);
         }
     }

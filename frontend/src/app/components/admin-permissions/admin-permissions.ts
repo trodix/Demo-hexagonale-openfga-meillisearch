@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, ChangeDetectionStrategy, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, ChangeDetectionStrategy, OnInit, OnDestroy } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -15,6 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PermissionService } from '../../services/permission.service';
+import { PermissionManagerService } from '../../services/permission-manager.service';
 import { AuthService } from '../../services/auth.service';
 import {
   UserInfo,
@@ -26,7 +27,8 @@ import {
   EntityPermissionRow,
   ProductPermissionRow,
   EnrichedPermissionsResponse,
-  ProductPermissionCheckResponse
+  GenericPermissionCheckResponse,
+  ResourcePermissionStatus
 } from '../../models/permission.model';
 
 @Component({
@@ -49,15 +51,15 @@ import {
   styleUrl: './admin-permissions.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AdminPermissions implements OnInit {
+export class AdminPermissions implements OnInit, OnDestroy {
   private readonly permissionService = inject(PermissionService);
+  private readonly permissionManager = inject(PermissionManagerService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
-  // État de chargement
-  protected readonly loading = signal(false);
-  protected readonly loadingPermissions = signal(false);
+  // État de chargement local
+  protected readonly loadingUsers = signal(false);
 
   // Données de base
   protected readonly users = signal<UserInfo[]>([]);
@@ -66,17 +68,17 @@ export class AdminPermissions implements OnInit {
   protected readonly entities = signal<EntityInfo[]>([]);
   protected readonly currentTenantId = this.authService.tenantId;
 
-  // Permissions brutes de l'utilisateur (pour les updates optimistes des tenants)
-  protected readonly userPermissions = signal<PermissionTuple[]>([]);
-
-  // Permissions enrichies (avec détection des indirectes)
-  protected readonly enrichedPermissions = signal<EnrichedPermissionsResponse | null>(null);
+  protected readonly loading = computed(() =>
+    this.loadingUsers() || this.permissionManager.loading()
+  );
+  protected readonly enrichedPermissions = this.permissionManager.enrichedPermissions;
+  protected readonly userPermissions = this.permissionManager.userPermissions;
 
   protected readonly searchControl = new FormControl('');
   protected readonly productIdControl = new FormControl('');
   protected readonly checkProductIdControl = new FormControl('');
   protected readonly checkRelationControl = new FormControl('read');
-  protected readonly checkResult = signal<ProductPermissionCheckResponse | null>(null);
+  protected readonly checkResult = signal<GenericPermissionCheckResponse | null>(null);
   protected readonly checkLoading = signal(false);
 
   protected readonly displayedColumns = ['username', 'displayName', 'actions'];
@@ -92,7 +94,6 @@ export class AdminPermissions implements OnInit {
     );
   });
 
-  // Tableaux structurés pour l'affichage
   protected readonly tenantRows = computed<TenantMembershipRow[]>(() => {
     const enriched = this.enrichedPermissions();
     const tenants = this.tenants();
@@ -101,7 +102,6 @@ export class AdminPermissions implements OnInit {
     const currentTenant = this.currentTenantId();
 
     if (!enriched) {
-      // Pas encore de données enrichies, retourner des données vides
       return tenants.map(tenant => ({
         tenant,
         isMember: false,
@@ -110,9 +110,10 @@ export class AdminPermissions implements OnInit {
       }));
     }
 
-    // Mapper les données enrichies du backend vers nos rows
+    const tenantResources = enriched.resourcesByType?.['tenant'] || [];
+
     return tenants.map(tenant => {
-      const enrichedTenant = enriched.tenants.find(t => t.tenantId === tenant.id);
+      const enrichedTenant = tenantResources.find(t => t.resourceId === tenant.id);
       const isCurrentTenantForCurrentUser =
         selectedUser?.username === currentUser &&
         tenant.id === currentTenant;
@@ -128,8 +129,8 @@ export class AdminPermissions implements OnInit {
 
       return {
         tenant,
-        isMember: enrichedTenant.isMember,
-        isAdmin: enrichedTenant.isAdmin,
+        isMember: enrichedTenant.permissions['member']?.isDirect || false,
+        isAdmin: enrichedTenant.permissions['admin']?.isDirect || false,
         isCurrentTenantForCurrentUser
       };
     });
@@ -140,7 +141,6 @@ export class AdminPermissions implements OnInit {
     const entities = this.entities();
 
     if (!enriched) {
-      // Pas encore de données enrichies, retourner des données vides
       return entities.map(entity => ({
         entity,
         hasRead: false,
@@ -152,9 +152,10 @@ export class AdminPermissions implements OnInit {
       }));
     }
 
-    // Mapper les données enrichies du backend vers nos rows
+    const entityResources = enriched.resourcesByType?.['entity'] || [];
+
     return entities.map(entity => {
-      const enrichedEntity = enriched.entities.find(e => e.entityId === entity.id);
+      const enrichedEntity = entityResources.find(e => e.resourceId === entity.id);
 
       if (!enrichedEntity) {
         return {
@@ -168,14 +169,18 @@ export class AdminPermissions implements OnInit {
         };
       }
 
+      const read = enrichedEntity.permissions['read'];
+      const write = enrichedEntity.permissions['write'];
+      const deletePermission = enrichedEntity.permissions['delete'];
+
       return {
         entity,
-        hasRead: enrichedEntity.read.hasPermission,
-        hasWrite: enrichedEntity.write.hasPermission,
-        hasDelete: enrichedEntity.delete.hasPermission,
-        readIsIndirect: enrichedEntity.read.hasPermission && !enrichedEntity.read.isDirect,
-        writeIsIndirect: enrichedEntity.write.hasPermission && !enrichedEntity.write.isDirect,
-        deleteIsIndirect: enrichedEntity.delete.hasPermission && !enrichedEntity.delete.isDirect
+        hasRead: read?.hasPermission || false,
+        hasWrite: write?.hasPermission || false,
+        hasDelete: deletePermission?.hasPermission || false,
+        readIsIndirect: (read?.hasPermission && !read?.isDirect) || false,
+        writeIsIndirect: (write?.hasPermission && !write?.isDirect) || false,
+        deleteIsIndirect: (deletePermission?.hasPermission && !deletePermission?.isDirect) || false
       };
     });
   });
@@ -187,16 +192,23 @@ export class AdminPermissions implements OnInit {
       return [];
     }
 
-    // Mapper les données enrichies du backend vers nos rows
-    return enriched.products.map(product => ({
-      productId: product.productId,
-      hasRead: product.read.hasPermission,
-      hasWrite: product.write.hasPermission,
-      hasDelete: product.delete.hasPermission,
-      readIsIndirect: product.read.hasPermission && !product.read.isDirect,
-      writeIsIndirect: product.write.hasPermission && !product.write.isDirect,
-      deleteIsIndirect: product.delete.hasPermission && !product.delete.isDirect
-    }));
+    const productResources = enriched.resourcesByType?.['product'] || [];
+
+    return productResources.map(product => {
+      const read = product.permissions['read'];
+      const write = product.permissions['write'];
+      const deletePermission = product.permissions['delete'];
+
+      return {
+        productId: product.resourceId,
+        hasRead: read?.hasPermission || false,
+        hasWrite: write?.hasPermission || false,
+        hasDelete: deletePermission?.hasPermission || false,
+        readIsIndirect: (read?.hasPermission && !read?.isDirect) || false,
+        writeIsIndirect: (write?.hasPermission && !write?.isDirect) || false,
+        deleteIsIndirect: (deletePermission?.hasPermission && !deletePermission?.isDirect) || false
+      };
+    });
   });
 
   ngOnInit(): void {
@@ -205,16 +217,19 @@ export class AdminPermissions implements OnInit {
     this.loadAdminTenants();
   }
 
+  ngOnDestroy(): void {
+    this.permissionManager.reset();
+  }
+
   private loadUsers(): void {
-    this.loading.set(true);
+    this.loadingUsers.set(true);
     this.permissionService.listUsers().subscribe({
       next: (response) => {
         this.users.set(response.users);
-        this.loading.set(false);
+        this.loadingUsers.set(false);
       },
-      error: (err) => {
-        console.error('Error loading users:', err);
-        this.loading.set(false);
+      error: () => {
+        this.loadingUsers.set(false);
       }
     });
   }
@@ -223,8 +238,7 @@ export class AdminPermissions implements OnInit {
     this.permissionService.listEntities().subscribe({
       next: (response) => {
         this.entities.set(response.entities);
-      },
-      error: (err) => console.error('Error loading entities:', err)
+      }
     });
   }
 
@@ -232,81 +246,27 @@ export class AdminPermissions implements OnInit {
     this.permissionService.listAdminTenants().subscribe({
       next: (response) => {
         this.tenants.set(response.tenants);
-      },
-      error: (err) => console.error('Error loading tenants:', err)
+      }
     });
   }
 
   protected selectUser(user: UserInfo): void {
     this.selectedUser.set(user);
-    this.loadUserPermissions(user.username);
-  }
-
-  private loadUserPermissions(username: string): void {
-    this.loadingPermissions.set(true);
-
-    // Charger les deux endpoints en parallèle
-    const basicPerms$ = this.permissionService.getUserPermissions(username);
-    const enrichedPerms$ = this.permissionService.getEnrichedPermissions(username);
-
-    // Combiner les résultats
-    basicPerms$.subscribe({
-      next: (response) => {
-        this.userPermissions.set(response.permissions);
-      },
-      error: (err) => {
-        console.error('Error loading basic permissions:', err);
-      }
-    });
-
-    enrichedPerms$.subscribe({
-      next: (response) => {
-        this.enrichedPermissions.set(response);
-        this.loadingPermissions.set(false);
-      },
-      error: (err) => {
-        console.error('Error loading enriched permissions:', err);
-        this.loadingPermissions.set(false);
-      }
-    });
+    this.permissionManager.loadPermissions(user.username).subscribe();
   }
 
   protected toggleTenantMembership(tenantId: string, currentValue: boolean): void {
     const user = this.selectedUser();
     if (!user) return;
 
-    const request: AddPermissionRequest = {
-      username: user.username,
-      objectType: 'tenant',
-      objectId: tenantId,
-      relation: 'member'
-    };
-
-    const action = currentValue
-      ? this.permissionService.removePermission(request)
-      : this.permissionService.addPermission(request);
-
-    action.subscribe({
-      next: () => {
-        // Recharger les permissions enrichies
-        this.permissionService.getEnrichedPermissions(user.username).subscribe({
-          next: (response) => {
-            this.enrichedPermissions.set(response);
-            this.showNotification(currentValue ? 'Retiré du tenant' : 'Ajouté au tenant');
-          },
-          error: (err) => {
-            console.error('Error reloading enriched permissions:', err);
-            this.showNotification('Membership mis à jour (rechargement échoué)');
-          }
-        });
-      },
-      error: (err) => {
-        console.error('Error toggling tenant membership:', err);
-        this.showNotification('Erreur lors de la modification');
-      }
-    });
+    this.permissionManager.togglePermission(
+      user.username,
+      'tenant',
+      tenantId,
+      'member',
+      currentValue
+    ).subscribe();
   }
-
 
   protected toggleEntityPermission(
     entityId: string,
@@ -316,36 +276,13 @@ export class AdminPermissions implements OnInit {
     const user = this.selectedUser();
     if (!user) return;
 
-    const request: AddPermissionRequest = {
-      username: user.username,
-      objectType: 'entity',
-      objectId: entityId,
-      relation
-    };
-
-    const action = currentValue
-      ? this.permissionService.removePermission(request)
-      : this.permissionService.addPermission(request);
-
-    action.subscribe({
-      next: () => {
-        // Recharger les permissions enrichies pour obtenir l'état calculé par OpenFGA
-        this.permissionService.getEnrichedPermissions(user.username).subscribe({
-          next: (response) => {
-            this.enrichedPermissions.set(response);
-            this.showNotification('Permission mise à jour');
-          },
-          error: (err) => {
-            console.error('Error reloading enriched permissions:', err);
-            this.showNotification('Permission mise à jour (rechargement échoué)');
-          }
-        });
-      },
-      error: (err) => {
-        console.error('Error toggling entity permission:', err);
-        this.showNotification('Erreur lors de la modification');
-      }
-    });
+    this.permissionManager.togglePermission(
+      user.username,
+      'entity',
+      entityId,
+      relation,
+      currentValue
+    ).subscribe();
   }
 
   protected toggleProductPermission(
@@ -356,36 +293,13 @@ export class AdminPermissions implements OnInit {
     const user = this.selectedUser();
     if (!user) return;
 
-    const request: AddPermissionRequest = {
-      username: user.username,
-      objectType: 'product',
-      objectId: productId,
-      relation
-    };
-
-    const action = currentValue
-      ? this.permissionService.removePermission(request)
-      : this.permissionService.addPermission(request);
-
-    action.subscribe({
-      next: () => {
-        // Recharger les permissions enrichies pour obtenir l'état calculé par OpenFGA
-        this.permissionService.getEnrichedPermissions(user.username).subscribe({
-          next: (response) => {
-            this.enrichedPermissions.set(response);
-            this.showNotification('Permission mise à jour');
-          },
-          error: (err) => {
-            console.error('Error reloading enriched permissions:', err);
-            this.showNotification('Permission mise à jour (rechargement échoué)');
-          }
-        });
-      },
-      error: (err) => {
-        console.error('Error toggling product permission:', err);
-        this.showNotification('Erreur lors de la modification');
-      }
-    });
+    this.permissionManager.togglePermission(
+      user.username,
+      'product',
+      productId,
+      relation,
+      currentValue
+    ).subscribe();
   }
 
   protected addProduct(): void {
@@ -394,32 +308,15 @@ export class AdminPermissions implements OnInit {
     if (!user || !productId) return;
 
     // Ajouter une permission read par défaut
-    const request: AddPermissionRequest = {
-      username: user.username,
-      objectType: 'product',
-      objectId: productId,
-      relation: 'read'
-    };
-
-    this.permissionService.addPermission(request).subscribe({
+    this.permissionManager.togglePermission(
+      user.username,
+      'product',
+      productId,
+      'read',
+      false
+    ).subscribe({
       next: () => {
-        // Recharger les permissions enrichies
-        this.permissionService.getEnrichedPermissions(user.username).subscribe({
-          next: (response) => {
-            this.enrichedPermissions.set(response);
-            this.productIdControl.setValue('');
-            this.showNotification('Produit ajouté');
-          },
-          error: (err) => {
-            console.error('Error reloading enriched permissions:', err);
-            this.productIdControl.setValue('');
-            this.showNotification('Produit ajouté (rechargement échoué)');
-          }
-        });
-      },
-      error: (err) => {
-        console.error('Error adding product:', err);
-        this.showNotification('Erreur lors de l\'ajout');
+        this.productIdControl.setValue('');
       }
     });
   }
@@ -428,43 +325,47 @@ export class AdminPermissions implements OnInit {
     const user = this.selectedUser();
     if (!user) return;
 
-    // Trouver toutes les permissions directes pour ce produit dans les permissions basiques
-    const permissions = this.userPermissions().filter(
-      p => p.objectType === 'product' && p.objectId === productId
-    );
+    const enriched = this.enrichedPermissions();
+    if (!enriched) return;
 
-    if (permissions.length === 0) {
+    const productResources = enriched.resourcesByType?.['product'] || [];
+    const product = productResources.find(p => p.resourceId === productId);
+
+    if (!product) {
+      this.showNotification('Produit non trouvé');
+      return;
+    }
+
+    const directRelations: string[] = [];
+    for (const [relation, status] of Object.entries(product.permissions)) {
+      if (status.isDirect) {
+        directRelations.push(relation);
+      }
+    }
+
+    if (directRelations.length === 0) {
       this.showNotification('Aucune permission directe à supprimer');
       return;
     }
 
-    // Créer des observables pour chaque suppression
-    const deletions = permissions.map(p =>
+    const deletions = directRelations.map(relation =>
       this.permissionService.removePermission({
         username: user.username,
-        objectType: p.objectType,
-        objectId: p.objectId,
-        relation: p.relation
+        objectType: 'product',
+        objectId: productId,
+        relation: relation
       })
     );
 
-    // Exécuter toutes les suppressions en parallèle
     forkJoin(deletions).subscribe({
       next: () => {
-        // Recharger les permissions enrichies
-        this.permissionService.getEnrichedPermissions(user.username).subscribe({
-          next: (response) => {
-            this.enrichedPermissions.set(response);
+        this.permissionManager.loadPermissions(user.username).subscribe({
+          next: () => {
             this.showNotification('Produit supprimé');
-          },
-          error: (err) => {
-            console.error('Error reloading enriched permissions:', err);
-            this.showNotification('Produit supprimé (rechargement échoué)');
           }
         });
       },
-      error: (err) => {
-        console.error('Error removing product:', err);
+      error: () => {
         this.showNotification('Erreur lors de la suppression');
       }
     });
@@ -487,13 +388,12 @@ export class AdminPermissions implements OnInit {
     this.checkLoading.set(true);
     this.checkResult.set(null);
 
-    this.permissionService.checkProductPermission(user.username, productId, relation).subscribe({
+    this.permissionService.checkResourcePermission(user.username, 'product', productId, relation).subscribe({
       next: (response) => {
         this.checkResult.set(response);
         this.checkLoading.set(false);
       },
-      error: (err) => {
-        console.error('Error checking product permission:', err);
+      error: () => {
         this.showNotification('Erreur lors de la vérification');
         this.checkLoading.set(false);
       }

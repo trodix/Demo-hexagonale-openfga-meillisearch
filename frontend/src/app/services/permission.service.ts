@@ -10,7 +10,7 @@ import {
   EntityListResponse,
   TenantListResponse,
   EnrichedPermissionsResponse,
-  ProductPermissionCheckResponse
+  GenericPermissionCheckResponse
 } from '../models/permission.model';
 
 @Injectable({
@@ -57,9 +57,9 @@ export class PermissionService {
     return this.http.get<EnrichedPermissionsResponse>(`/api/admin/users/${username}/permissions/enriched`);
   }
 
-  checkProductPermission(username: string, productId: string, relation: string): Observable<ProductPermissionCheckResponse> {
-    return this.http.get<ProductPermissionCheckResponse>(
-      `/api/admin/users/${username}/products/${productId}/check?relation=${relation}`
+  checkResourcePermission(username: string, resourceType: string, resourceId: string, relation: string): Observable<GenericPermissionCheckResponse> {
+    return this.http.get<GenericPermissionCheckResponse>(
+      `/api/admin/users/${username}/resources/${resourceType}/${resourceId}/check?relation=${relation}`
     );
   }
 }

@@ -64,7 +64,7 @@
         <div class="permission-group">
           <h3>Membership aux Tenants</h3>
 
-          @if (loadingPermissions()) {
+          @if (loading()) {
             <mat-spinner diameter="40"></mat-spinner>
           } @else if (tenantRows().length > 0) {
             <table mat-table [dataSource]="tenantRows()" class="permissions-table">
@@ -118,7 +118,7 @@
         <div class="permission-group">
           <h3>Permissions sur les Entités</h3>
 
-          @if (loadingPermissions()) {
+          @if (loading()) {
             <mat-spinner diameter="40"></mat-spinner>
           } @else if (entityRows().length > 0) {
             <table mat-table [dataSource]="entityRows()" class="permissions-table">
@@ -210,7 +210,7 @@
             </button>
           </div>
 
-          @if (loadingPermissions()) {
+          @if (loading()) {
             <mat-spinner diameter="40"></mat-spinner>
           } @else if (productRows().length > 0) {
             <table mat-table [dataSource]="productRows()" class="permissions-table">
@@ -333,7 +333,7 @@
                 <mat-icon>{{ checkResult()!.allowed ? 'check_circle' : 'cancel' }}</mat-icon>
                 <span>
                   Permission <strong>{{ checkResult()!.relation }}</strong> sur le produit
-                  <strong>{{ checkResult()!.productId }}</strong> pour l'utilisateur
+                  <strong>{{ checkResult()!.resourceId }}</strong> pour l'utilisateur
                   <strong>{{ checkResult()!.username }}</strong> :
                   <strong>{{ checkResult()!.allowed ? 'AUTORISÉE' : 'REFUSÉE' }}</strong>
                 </span>

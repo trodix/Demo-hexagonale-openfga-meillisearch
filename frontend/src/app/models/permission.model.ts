@@ -119,10 +119,29 @@ export interface ProductPermissionStatusDto {
   delete: PermissionStatus;
 }
 
+// New generic structure matching backend
+export interface ResourcePermissionStatus {
+  resourceType: string;
+  resourceId: string;
+  resourceName: string | null;
+  permissions: { [relation: string]: PermissionStatus };
+}
+
 export interface EnrichedPermissionsResponse {
   username: string;
   tenantId: string;
-  tenants: TenantPermissionStatusDto[];
-  entities: EntityPermissionStatusDto[];
-  products: ProductPermissionStatusDto[];
+  resourcesByType: { [resourceType: string]: ResourcePermissionStatus[] };
+  // Convenience getters for backward compatibility
+  tenants?: TenantPermissionStatusDto[];
+  entities?: EntityPermissionStatusDto[];
+  products?: ProductPermissionStatusDto[];
+}
+
+// Generic permission check response
+export interface GenericPermissionCheckResponse {
+  username: string;
+  resourceType: string;
+  resourceId: string;
+  relation: string;
+  allowed: boolean;
 }
