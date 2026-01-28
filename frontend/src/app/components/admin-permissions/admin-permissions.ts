@@ -11,6 +11,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PermissionService } from '../../services/permission.service';
 import {
@@ -21,7 +22,8 @@ import {
   TenantInfo,
   TenantMembershipRow,
   EntityPermissionRow,
-  ProductPermissionRow
+  ProductPermissionRow,
+  EnrichedPermissionsResponse
 } from '../../models/permission.model';
 
 @Component({
@@ -36,7 +38,8 @@ import {
     MatTableModule,
     MatCardModule,
     MatProgressSpinnerModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatTooltipModule
   ],
   templateUrl: './admin-permissions.html',
   styleUrl: './admin-permissions.scss',
@@ -57,8 +60,11 @@ export class AdminPermissions implements OnInit {
   protected readonly tenants = signal<TenantInfo[]>([]);
   protected readonly entities = signal<EntityInfo[]>([]);
 
-  // Permissions brutes de l'utilisateur
+  // Permissions brutes de l'utilisateur (pour les updates optimistes des tenants)
   protected readonly userPermissions = signal<PermissionTuple[]>([]);
+
+  // Permissions enrichies (avec détection des indirectes)
+  protected readonly enrichedPermissions = signal<EnrichedPermissionsResponse | null>(null);
 
   protected readonly searchControl = new FormControl('');
   protected readonly productIdControl = new FormControl('');
@@ -92,54 +98,67 @@ export class AdminPermissions implements OnInit {
   });
 
   protected readonly entityRows = computed<EntityPermissionRow[]>(() => {
+    const enriched = this.enrichedPermissions();
     const entities = this.entities();
-    const permissions = this.userPermissions();
 
-    return entities.map(entity => ({
-      entity,
-      hasRead: permissions.some(p =>
-        p.objectType === 'entity' &&
-        p.objectId === entity.id &&
-        p.relation === 'read'
-      ),
-      hasWrite: permissions.some(p =>
-        p.objectType === 'entity' &&
-        p.objectId === entity.id &&
-        p.relation === 'write'
-      ),
-      hasDelete: permissions.some(p =>
-        p.objectType === 'entity' &&
-        p.objectId === entity.id &&
-        p.relation === 'delete'
-      )
-    }));
+    if (!enriched) {
+      // Pas encore de données enrichies, retourner des données vides
+      return entities.map(entity => ({
+        entity,
+        hasRead: false,
+        hasWrite: false,
+        hasDelete: false,
+        readIsIndirect: false,
+        writeIsIndirect: false,
+        deleteIsIndirect: false
+      }));
+    }
+
+    // Mapper les données enrichies du backend vers nos rows
+    return entities.map(entity => {
+      const enrichedEntity = enriched.entities.find(e => e.entityId === entity.id);
+
+      if (!enrichedEntity) {
+        return {
+          entity,
+          hasRead: false,
+          hasWrite: false,
+          hasDelete: false,
+          readIsIndirect: false,
+          writeIsIndirect: false,
+          deleteIsIndirect: false
+        };
+      }
+
+      return {
+        entity,
+        hasRead: enrichedEntity.read.hasPermission,
+        hasWrite: enrichedEntity.write.hasPermission,
+        hasDelete: enrichedEntity.delete.hasPermission,
+        readIsIndirect: enrichedEntity.read.hasPermission && !enrichedEntity.read.isDirect,
+        writeIsIndirect: enrichedEntity.write.hasPermission && !enrichedEntity.write.isDirect,
+        deleteIsIndirect: enrichedEntity.delete.hasPermission && !enrichedEntity.delete.isDirect
+      };
+    });
   });
 
   protected readonly productRows = computed<ProductPermissionRow[]>(() => {
-    const permissions = this.userPermissions();
+    const enriched = this.enrichedPermissions();
 
-    // Grouper les permissions produits par productId
-    const productMap = new Map<string, ProductPermissionRow>();
+    if (!enriched) {
+      return [];
+    }
 
-    permissions
-      .filter(p => p.objectType === 'product')
-      .forEach(p => {
-        if (!productMap.has(p.objectId)) {
-          productMap.set(p.objectId, {
-            productId: p.objectId,
-            hasRead: false,
-            hasWrite: false,
-            hasDelete: false
-          });
-        }
-
-        const row = productMap.get(p.objectId)!;
-        if (p.relation === 'read') row.hasRead = true;
-        if (p.relation === 'write') row.hasWrite = true;
-        if (p.relation === 'delete') row.hasDelete = true;
-      });
-
-    return Array.from(productMap.values());
+    // Mapper les données enrichies du backend vers nos rows
+    return enriched.products.map(product => ({
+      productId: product.productId,
+      hasRead: product.read.hasPermission,
+      hasWrite: product.write.hasPermission,
+      hasDelete: product.delete.hasPermission,
+      readIsIndirect: product.read.hasPermission && !product.read.isDirect,
+      writeIsIndirect: product.write.hasPermission && !product.write.isDirect,
+      deleteIsIndirect: product.delete.hasPermission && !product.delete.isDirect
+    }));
   });
 
   ngOnInit(): void {
@@ -187,13 +206,28 @@ export class AdminPermissions implements OnInit {
 
   private loadUserPermissions(username: string): void {
     this.loadingPermissions.set(true);
-    this.permissionService.getUserPermissions(username).subscribe({
+
+    // Charger les deux endpoints en parallèle
+    const basicPerms$ = this.permissionService.getUserPermissions(username);
+    const enrichedPerms$ = this.permissionService.getEnrichedPermissions(username);
+
+    // Combiner les résultats
+    basicPerms$.subscribe({
       next: (response) => {
         this.userPermissions.set(response.permissions);
+      },
+      error: (err) => {
+        console.error('Error loading basic permissions:', err);
+      }
+    });
+
+    enrichedPerms$.subscribe({
+      next: (response) => {
+        this.enrichedPermissions.set(response);
         this.loadingPermissions.set(false);
       },
       error: (err) => {
-        console.error('Error loading permissions:', err);
+        console.error('Error loading enriched permissions:', err);
         this.loadingPermissions.set(false);
       }
     });
@@ -263,28 +297,21 @@ export class AdminPermissions implements OnInit {
 
     action.subscribe({
       next: () => {
-        // Mise à jour optimiste locale
-        if (currentValue) {
-          // Retirer la permission
-          this.userPermissions.update(perms =>
-            perms.filter(p =>
-              !(p.objectType === 'entity' && p.objectId === entityId && p.relation === relation)
-            )
-          );
-        } else {
-          // Ajouter la permission
-          this.userPermissions.update(perms => [
-            ...perms,
-            { objectType: 'entity', objectId: entityId, relation }
-          ]);
-        }
-        this.showNotification('Permission mise à jour');
+        // Recharger les permissions enrichies pour obtenir l'état calculé par OpenFGA
+        this.permissionService.getEnrichedPermissions(user.username).subscribe({
+          next: (response) => {
+            this.enrichedPermissions.set(response);
+            this.showNotification('Permission mise à jour');
+          },
+          error: (err) => {
+            console.error('Error reloading enriched permissions:', err);
+            this.showNotification('Permission mise à jour (rechargement échoué)');
+          }
+        });
       },
       error: (err) => {
         console.error('Error toggling entity permission:', err);
         this.showNotification('Erreur lors de la modification');
-        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
-        this.loadUserPermissions(user.username);
       }
     });
   }
@@ -310,28 +337,21 @@ export class AdminPermissions implements OnInit {
 
     action.subscribe({
       next: () => {
-        // Mise à jour optimiste locale
-        if (currentValue) {
-          // Retirer la permission
-          this.userPermissions.update(perms =>
-            perms.filter(p =>
-              !(p.objectType === 'product' && p.objectId === productId && p.relation === relation)
-            )
-          );
-        } else {
-          // Ajouter la permission
-          this.userPermissions.update(perms => [
-            ...perms,
-            { objectType: 'product', objectId: productId, relation }
-          ]);
-        }
-        this.showNotification('Permission mise à jour');
+        // Recharger les permissions enrichies pour obtenir l'état calculé par OpenFGA
+        this.permissionService.getEnrichedPermissions(user.username).subscribe({
+          next: (response) => {
+            this.enrichedPermissions.set(response);
+            this.showNotification('Permission mise à jour');
+          },
+          error: (err) => {
+            console.error('Error reloading enriched permissions:', err);
+            this.showNotification('Permission mise à jour (rechargement échoué)');
+          }
+        });
       },
       error: (err) => {
         console.error('Error toggling product permission:', err);
         this.showNotification('Erreur lors de la modification');
-        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
-        this.loadUserPermissions(user.username);
       }
     });
   }
@@ -351,19 +371,23 @@ export class AdminPermissions implements OnInit {
 
     this.permissionService.addPermission(request).subscribe({
       next: () => {
-        // Mise à jour optimiste locale
-        this.userPermissions.update(perms => [
-          ...perms,
-          { objectType: 'product', objectId: productId, relation: 'read' }
-        ]);
-        this.productIdControl.setValue('');
-        this.showNotification('Produit ajouté');
+        // Recharger les permissions enrichies
+        this.permissionService.getEnrichedPermissions(user.username).subscribe({
+          next: (response) => {
+            this.enrichedPermissions.set(response);
+            this.productIdControl.setValue('');
+            this.showNotification('Produit ajouté');
+          },
+          error: (err) => {
+            console.error('Error reloading enriched permissions:', err);
+            this.productIdControl.setValue('');
+            this.showNotification('Produit ajouté (rechargement échoué)');
+          }
+        });
       },
       error: (err) => {
         console.error('Error adding product:', err);
         this.showNotification('Erreur lors de l\'ajout');
-        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
-        this.loadUserPermissions(user.username);
       }
     });
   }
@@ -372,10 +396,15 @@ export class AdminPermissions implements OnInit {
     const user = this.selectedUser();
     if (!user) return;
 
-    // Supprimer toutes les permissions pour ce produit
+    // Trouver toutes les permissions directes pour ce produit dans les permissions basiques
     const permissions = this.userPermissions().filter(
       p => p.objectType === 'product' && p.objectId === productId
     );
+
+    if (permissions.length === 0) {
+      this.showNotification('Aucune permission directe à supprimer');
+      return;
+    }
 
     // Créer des observables pour chaque suppression
     const deletions = permissions.map(p =>
@@ -390,17 +419,21 @@ export class AdminPermissions implements OnInit {
     // Exécuter toutes les suppressions en parallèle
     forkJoin(deletions).subscribe({
       next: () => {
-        // Mise à jour optimiste locale - retirer toutes les permissions du produit
-        this.userPermissions.update(perms =>
-          perms.filter(p => !(p.objectType === 'product' && p.objectId === productId))
-        );
-        this.showNotification('Produit supprimé');
+        // Recharger les permissions enrichies
+        this.permissionService.getEnrichedPermissions(user.username).subscribe({
+          next: (response) => {
+            this.enrichedPermissions.set(response);
+            this.showNotification('Produit supprimé');
+          },
+          error: (err) => {
+            console.error('Error reloading enriched permissions:', err);
+            this.showNotification('Produit supprimé (rechargement échoué)');
+          }
+        });
       },
       error: (err) => {
         console.error('Error removing product:', err);
         this.showNotification('Erreur lors de la suppression');
-        // En cas d'erreur, recharger pour être sûr d'avoir l'état correct
-        this.loadUserPermissions(user.username);
       }
     });
   }

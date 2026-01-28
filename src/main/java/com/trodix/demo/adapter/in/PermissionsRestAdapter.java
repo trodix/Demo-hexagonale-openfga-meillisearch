@@ -22,6 +22,7 @@ public class PermissionsRestAdapter {
     private final RemovePermissionUseCase removePermissionUseCase;
     private final ListEntitiesUseCase listEntitiesUseCase;
     private final ListAdminTenantsUseCase listAdminTenantsUseCase;
+    private final GetEnrichedPermissionsUseCase getEnrichedPermissionsUseCase;
     private final SpringAuthenticationAdapter auth;
 
     @PostMapping(value = "/api/permissions/check", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -88,5 +89,13 @@ public class PermissionsRestAdapter {
     public TenantListResponse listAdminTenants() {
         String username = auth.getUsername();
         return listAdminTenantsUseCase.listAdminTenants(username);
+    }
+
+    @GetMapping(value = "/api/admin/users/{username}/permissions/enriched", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
+    public EnrichedPermissionsResponse getEnrichedPermissions(@PathVariable String username) {
+        String tenantId = auth.getTenant();
+        return getEnrichedPermissionsUseCase.getEnrichedPermissions(username, tenantId);
     }
 }

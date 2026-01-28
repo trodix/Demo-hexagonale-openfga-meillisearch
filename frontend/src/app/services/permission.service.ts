@@ -8,7 +8,8 @@ import {
   UserPermissionsResponse,
   AddPermissionRequest,
   EntityListResponse,
-  TenantListResponse
+  TenantListResponse,
+  EnrichedPermissionsResponse
 } from '../models/permission.model';
 
 @Injectable({
@@ -49,5 +50,9 @@ export class PermissionService {
 
   listAdminTenants(): Observable<TenantListResponse> {
     return this.http.get<TenantListResponse>('/api/admin/tenants');
+  }
+
+  getEnrichedPermissions(username: string): Observable<EnrichedPermissionsResponse> {
+    return this.http.get<EnrichedPermissionsResponse>(`/api/admin/users/${username}/permissions/enriched`);
   }
 }

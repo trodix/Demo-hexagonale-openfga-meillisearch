@@ -63,6 +63,9 @@ export interface EntityPermissionRow {
   hasRead: boolean;
   hasWrite: boolean;
   hasDelete: boolean;
+  readIsIndirect: boolean;
+  writeIsIndirect: boolean;
+  deleteIsIndirect: boolean;
 }
 
 export interface ProductPermissionRow {
@@ -70,9 +73,39 @@ export interface ProductPermissionRow {
   hasRead: boolean;
   hasWrite: boolean;
   hasDelete: boolean;
+  readIsIndirect: boolean;
+  writeIsIndirect: boolean;
+  deleteIsIndirect: boolean;
 }
 
 export interface TenantMembershipRow {
   tenant: TenantInfo;
   isMember: boolean;
+}
+
+export interface PermissionStatus {
+  hasPermission: boolean;
+  isDirect: boolean;
+}
+
+export interface EntityPermissionStatusDto {
+  entityId: string;
+  entityName: string;
+  read: PermissionStatus;
+  write: PermissionStatus;
+  delete: PermissionStatus;
+}
+
+export interface ProductPermissionStatusDto {
+  productId: string;
+  read: PermissionStatus;
+  write: PermissionStatus;
+  delete: PermissionStatus;
+}
+
+export interface EnrichedPermissionsResponse {
+  username: string;
+  tenantId: string;
+  entities: EntityPermissionStatusDto[];
+  products: ProductPermissionStatusDto[];
 }
