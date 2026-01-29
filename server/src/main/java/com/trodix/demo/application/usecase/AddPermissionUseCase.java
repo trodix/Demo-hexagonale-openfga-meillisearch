@@ -1,6 +1,6 @@
 package com.trodix.demo.application.usecase;
 
-import com.trodix.demo.adapter.in.dto.AddPermissionRequest;
+import com.trodix.demo.application.model.PermissionCommand;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.errors.FgaApiValidationError;
@@ -19,8 +19,8 @@ public class AddPermissionUseCase {
 
     private final OpenFgaClient fgaClient;
 
-    public void addPermission(AddPermissionRequest request) {
-        if ("tenant".equals(request.getObjectType()) && "admin".equals(request.getRelation())) {
+    public void addPermission(PermissionCommand command) {
+        if ("tenant".equals(command.objectType()) && "admin".equals(command.relation())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Cannot grant tenant admin permission - only super admin can do this"
@@ -28,12 +28,12 @@ public class AddPermissionUseCase {
         }
 
         try {
-            String user = "user:" + request.getUsername();
-            String object = request.getObjectType() + ":" + request.getObjectId();
+            String user = "user:" + command.username();
+            String object = command.objectType() + ":" + command.objectId();
 
             ClientTupleKey tuple = new ClientTupleKey()
                     .user(user)
-                    .relation(request.getRelation())
+                    .relation(command.relation())
                     ._object(object);
 
             fgaClient.writeTuples(List.of(tuple)).get();
@@ -42,7 +42,7 @@ public class AddPermissionUseCase {
                 FgaApiValidationError fgaError = (FgaApiValidationError) e.getCause();
                 if (fgaError.getMessage() != null && fgaError.getMessage().contains("already exists")) {
                     log.debug("Tuple already exists, ignoring: user={}, object={}, relation={}",
-                        request.getUsername(), request.getObjectId(), request.getRelation());
+                        command.username(), command.objectId(), command.relation());
                     return;
                 }
             }

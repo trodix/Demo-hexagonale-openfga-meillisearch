@@ -1,8 +1,8 @@
 package com.trodix.demo.application.service;
 
-import com.trodix.demo.adapter.in.dto.PermissionStatus;
-import com.trodix.demo.adapter.in.dto.ResourceInfo;
-import com.trodix.demo.adapter.in.dto.ResourcePermissionStatus;
+import com.trodix.demo.application.model.PermissionStatusInfo;
+import com.trodix.demo.application.model.ResourceInfo;
+import com.trodix.demo.application.model.ResourcePermissionInfo;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.*;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
@@ -64,15 +64,15 @@ class ResourcePermissionCheckerTest {
             .thenReturn(CompletableFuture.completedFuture(checkResponseDelete));
 
         // When
-        Map<String, PermissionStatus> result = resourcePermissionChecker.checkResourcePermissions(
+        Map<String, PermissionStatusInfo> result = resourcePermissionChecker.checkResourcePermissions(
             username, resourceType, resourceId, relations, directPermissions
         );
 
         // Then
         assertThat(result).hasSize(3);
-        assertThat(result.get("read")).isEqualTo(new PermissionStatus(true, true)); // Direct
-        assertThat(result.get("write")).isEqualTo(new PermissionStatus(true, true)); // Direct
-        assertThat(result.get("delete")).isEqualTo(new PermissionStatus(false, false)); // No permission
+        assertThat(result.get("read")).isEqualTo(new PermissionStatusInfo(true, true)); // Direct
+        assertThat(result.get("write")).isEqualTo(new PermissionStatusInfo(true, true)); // Direct
+        assertThat(result.get("delete")).isEqualTo(new PermissionStatusInfo(false, false)); // No permission
     }
 
     @Test
@@ -90,12 +90,12 @@ class ResourcePermissionCheckerTest {
             .thenReturn(CompletableFuture.completedFuture(checkResponse));
 
         // When
-        Map<String, PermissionStatus> result = resourcePermissionChecker.checkResourcePermissions(
+        Map<String, PermissionStatusInfo> result = resourcePermissionChecker.checkResourcePermissions(
             username, resourceType, resourceId, relations, directPermissions
         );
 
         // Then
-        assertThat(result.get("read")).isEqualTo(new PermissionStatus(true, false)); // Indirect
+        assertThat(result.get("read")).isEqualTo(new PermissionStatusInfo(true, false)); // Indirect
     }
 
     @Test
@@ -107,7 +107,7 @@ class ResourcePermissionCheckerTest {
         List<String> relations = List.of();
 
         // When
-        Map<String, PermissionStatus> result = resourcePermissionChecker.checkResourcePermissions(
+        Map<String, PermissionStatusInfo> result = resourcePermissionChecker.checkResourcePermissions(
             username, resourceType, resourceId, relations, directPermissions
         );
 
@@ -154,7 +154,7 @@ class ResourcePermissionCheckerTest {
             .thenReturn(CompletableFuture.completedFuture(checkResponse));
 
         // When
-        List<ResourcePermissionStatus> result = resourcePermissionChecker.checkMultipleResources(
+        List<ResourcePermissionInfo> result = resourcePermissionChecker.checkMultipleResources(
             username, resourceType, resources, relations, directPermissions
         );
 
@@ -176,7 +176,7 @@ class ResourcePermissionCheckerTest {
         List<String> relations = List.of("read");
 
         // When
-        List<ResourcePermissionStatus> result = resourcePermissionChecker.checkMultipleResources(
+        List<ResourcePermissionInfo> result = resourcePermissionChecker.checkMultipleResources(
             username, resourceType, resources, relations, directPermissions
         );
 
@@ -271,21 +271,21 @@ class ResourcePermissionCheckerTest {
         when(fgaClient.check(any(ClientCheckRequest.class)))
             .thenReturn(CompletableFuture.completedFuture(checkResponse));
 
-        Map<String, PermissionStatus> tenantResult = resourcePermissionChecker.checkResourcePermissions(
+        Map<String, PermissionStatusInfo> tenantResult = resourcePermissionChecker.checkResourcePermissions(
             "testuser", "tenant", "t1", List.of("member"), directPermissions
         );
-        assertThat(tenantResult.get("member")).isEqualTo(new PermissionStatus(true, true));
+        assertThat(tenantResult.get("member")).isEqualTo(new PermissionStatusInfo(true, true));
 
         // Test for product
-        Map<String, PermissionStatus> productResult = resourcePermissionChecker.checkResourcePermissions(
+        Map<String, PermissionStatusInfo> productResult = resourcePermissionChecker.checkResourcePermissions(
             "testuser", "product", "p1", List.of("read"), directPermissions
         );
-        assertThat(productResult.get("read")).isEqualTo(new PermissionStatus(true, true));
+        assertThat(productResult.get("read")).isEqualTo(new PermissionStatusInfo(true, true));
 
         // Test for entity
-        Map<String, PermissionStatus> entityResult = resourcePermissionChecker.checkResourcePermissions(
+        Map<String, PermissionStatusInfo> entityResult = resourcePermissionChecker.checkResourcePermissions(
             "testuser", "entity", "e1", List.of("read"), directPermissions
         );
-        assertThat(entityResult.get("read")).isEqualTo(new PermissionStatus(true, true));
+        assertThat(entityResult.get("read")).isEqualTo(new PermissionStatusInfo(true, true));
     }
 }

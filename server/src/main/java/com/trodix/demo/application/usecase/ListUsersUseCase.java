@@ -1,7 +1,6 @@
 package com.trodix.demo.application.usecase;
 
-import com.trodix.demo.adapter.in.dto.UserInfo;
-import com.trodix.demo.adapter.in.dto.UserListResponse;
+import com.trodix.demo.application.model.UserInfo;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -9,13 +8,11 @@ import java.util.List;
 @Service
 public class ListUsersUseCase {
 
-    public UserListResponse listUsers() {
+    public List<UserInfo> listUsers() {
         // Pour MVP: retourne liste hardcodée des utilisateurs in-memory
-        List<UserInfo> users = List.of(
+        return List.of(
                 new UserInfo("admin", "Administrator"),
                 new UserInfo("user1", "User 1")
         );
-
-        return new UserListResponse(users);
     }
 }

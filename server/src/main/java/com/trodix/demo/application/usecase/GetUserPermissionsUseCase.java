@@ -1,7 +1,7 @@
 package com.trodix.demo.application.usecase;
 
-import com.trodix.demo.adapter.in.dto.PermissionTuple;
-import com.trodix.demo.adapter.in.dto.UserPermissionsResponse;
+import com.trodix.demo.application.model.PermissionTupleInfo;
+import com.trodix.demo.application.model.UserPermissionsInfo;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientReadRequest;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +22,8 @@ public class GetUserPermissionsUseCase {
     private static final Set<String> ENTITY_RELATIONS = Set.of("read", "write", "delete");
     private static final Set<String> PRODUCT_RELATIONS = Set.of("owner", "read", "write", "delete");
 
-    public UserPermissionsResponse getUserPermissions(String username, String tenantId) {
-        List<PermissionTuple> permissions = new ArrayList<>();
+    public UserPermissionsInfo getUserPermissions(String username, String tenantId) {
+        List<PermissionTupleInfo> permissions = new ArrayList<>();
 
         try {
             String user = "user:" + username;
@@ -65,13 +65,13 @@ public class GetUserPermissionsUseCase {
 
                 // Exclure la relation "owner" sur les produits (attribuée automatiquement à la création)
                 if (isConfigurable && !(objectType.equals("product") && relation.equals("owner"))) {
-                    permissions.add(new PermissionTuple(objectType, objectId, relation));
+                    permissions.add(new PermissionTupleInfo(objectType, objectId, relation));
                 }
             }
         } catch (Exception e) {
             throw new RuntimeException("Error reading user permissions", e);
         }
 
-        return new UserPermissionsResponse(username, tenantId, permissions);
+        return new UserPermissionsInfo(username, tenantId, permissions);
     }
 }

@@ -1,9 +1,9 @@
 package com.trodix.demo.application.usecase;
 
-import com.trodix.demo.adapter.in.dto.CheckItem;
-import com.trodix.demo.adapter.in.dto.PermissionCheckRequest;
-import com.trodix.demo.adapter.in.dto.PermissionCheckResponse;
-import com.trodix.demo.adapter.in.security.SpringAuthenticationAdapter;
+import com.trodix.demo.application.model.PermissionCheckCommand;
+import com.trodix.demo.application.model.PermissionCheckItem;
+import com.trodix.demo.application.model.PermissionCheckResult;
+import com.trodix.demo.application.port.security.AuthenticationAdapter;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import lombok.RequiredArgsConstructor;
@@ -17,19 +17,19 @@ import java.util.Map;
 public class CheckPermissionsUseCase {
 
     private final OpenFgaClient fgaClient;
-    private final SpringAuthenticationAdapter auth;
+    private final AuthenticationAdapter auth;
 
-    public PermissionCheckResponse checkPermissions(PermissionCheckRequest request) {
+    public PermissionCheckResult checkPermissions(PermissionCheckCommand command) {
         Map<String, Boolean> results = new HashMap<>();
         String username = auth.getUsername();
 
-        for (CheckItem check : request.getChecks()) {
-            String key = check.getObject() + " " + check.getRelation();
+        for (PermissionCheckItem check : command.checks()) {
+            String key = check.object() + " " + check.relation();
             try {
                 ClientCheckRequest checkRequest = new ClientCheckRequest()
                         .user("user:" + username)
-                        .relation(check.getRelation())
-                        ._object(check.getObject());
+                        .relation(check.relation())
+                        ._object(check.object());
 
                 Boolean allowed = fgaClient.check(checkRequest).get().getAllowed();
                 results.put(key, Boolean.TRUE.equals(allowed));
@@ -38,6 +38,6 @@ public class CheckPermissionsUseCase {
             }
         }
 
-        return new PermissionCheckResponse(results);
+        return new PermissionCheckResult(results);
     }
 }

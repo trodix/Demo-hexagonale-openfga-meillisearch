@@ -1,7 +1,6 @@
 package com.trodix.demo.application.usecase;
 
-import com.trodix.demo.adapter.in.dto.TenantInfo;
-import com.trodix.demo.adapter.in.dto.TenantListResponse;
+import com.trodix.demo.application.model.TenantInfo;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientReadRequest;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +14,7 @@ import java.util.List;
 public class ListAdminTenantsUseCase {
     private final OpenFgaClient fgaClient;
 
-    public TenantListResponse listAdminTenants(String username) {
+    public List<TenantInfo> listAdminTenants(String username) {
         List<TenantInfo> tenants = new ArrayList<>();
 
         try {
@@ -41,6 +40,6 @@ public class ListAdminTenantsUseCase {
             throw new RuntimeException("Error reading admin tenants", e);
         }
 
-        return new TenantListResponse(tenants);
+        return tenants;
     }
 }

@@ -1,6 +1,7 @@
 package com.trodix.demo.adapter.in;
 
 import com.trodix.demo.adapter.in.dto.*;
+import com.trodix.demo.adapter.in.mapper.PermissionMapper;
 import com.trodix.demo.adapter.in.security.SpringAuthenticationAdapter;
 import com.trodix.demo.application.usecase.*;
 import lombok.RequiredArgsConstructor;
@@ -25,18 +26,19 @@ public class PermissionsRestAdapter {
     private final GetEnrichedPermissionsUseCase getEnrichedPermissionsUseCase;
     private final CheckProductPermissionUseCase checkProductPermissionUseCase;
     private final SpringAuthenticationAdapter auth;
+    private final PermissionMapper mapper;
 
     @PostMapping(value = "/api/permissions/check", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public PermissionCheckResponse checkPermissions(@RequestBody PermissionCheckRequest request) {
-        return checkPermissionsUseCase.checkPermissions(request);
+        return mapper.toResponse(checkPermissionsUseCase.checkPermissions(mapper.toCommand(request)));
     }
 
     @GetMapping(value = "/api/admin/users", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
     public UserListResponse listUsers() {
-        return listUsersUseCase.listUsers();
+        return mapper.toUserListResponse(listUsersUseCase.listUsers());
     }
 
     @GetMapping(value = "/api/admin/users/{username}/permissions", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -51,45 +53,46 @@ public class PermissionsRestAdapter {
 
         // Vérifier que l'utilisateur connecté est admin du tenant ciblé
         String connectedUser = auth.getUsername();
-        boolean isAdmin = checkPermissionsUseCase.checkPermissions(
-            new PermissionCheckRequest(List.of(
-                new CheckItem("tenant:" + targetTenant, "admin")
-            ))
+        PermissionCheckRequest checkRequest = new PermissionCheckRequest(List.of(
+            new CheckItem("tenant:" + targetTenant, "admin")
+        ));
+        boolean isAdmin = mapper.toResponse(
+            checkPermissionsUseCase.checkPermissions(mapper.toCommand(checkRequest))
         ).getResults().get("tenant:" + targetTenant + " admin");
 
         if (!isAdmin) {
             throw new com.trodix.demo.application.exceptions.AuthorizationException("Not admin of this tenant");
         }
 
-        return getUserPermissionsUseCase.getUserPermissions(username, targetTenant);
+        return mapper.toResponse(getUserPermissionsUseCase.getUserPermissions(username, targetTenant));
     }
 
     @PostMapping(value = "/api/admin/permissions", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
     public void addPermission(@RequestBody AddPermissionRequest request) {
-        addPermissionUseCase.addPermission(request);
+        addPermissionUseCase.addPermission(mapper.toCommand(request));
     }
 
     @DeleteMapping(value = "/api/admin/permissions", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
     public void removePermission(@RequestBody AddPermissionRequest request) {
-        removePermissionUseCase.removePermission(request);
+        removePermissionUseCase.removePermission(mapper.toCommand(request));
     }
 
     @GetMapping(value = "/api/admin/entities", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
     public EntityListResponse listEntities() {
-        return listEntitiesUseCase.listEntities();
+        return mapper.toEntityListResponse(listEntitiesUseCase.listEntities());
     }
 
     @GetMapping(value = "/api/admin/tenants", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public TenantListResponse listAdminTenants() {
         String username = auth.getUsername();
-        return listAdminTenantsUseCase.listAdminTenants(username);
+        return mapper.toTenantListResponse(listAdminTenantsUseCase.listAdminTenants(username));
     }
 
     @GetMapping(value = "/api/admin/users/{username}/permissions/enriched", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -97,7 +100,7 @@ public class PermissionsRestAdapter {
     @PreAuthorize("@fga.check('tenant', @springAuthenticationAdapter.getTenant(), 'admin', 'user')")
     public EnrichedPermissionsResponse getEnrichedPermissions(@PathVariable String username) {
         String tenantId = auth.getTenant();
-        return getEnrichedPermissionsUseCase.getEnrichedPermissions(username, tenantId);
+        return mapper.toResponse(getEnrichedPermissionsUseCase.getEnrichedPermissions(username, tenantId));
     }
 
     /**

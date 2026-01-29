@@ -1,6 +1,6 @@
 package com.trodix.demo.application.usecase;
 
-import com.trodix.demo.adapter.in.security.SpringAuthenticationAdapter;
+import com.trodix.demo.application.port.security.AuthenticationAdapter;
 import com.trodix.demo.application.exceptions.ProductException;
 import com.trodix.demo.application.port.ProductAuthorizationPort;
 import com.trodix.demo.domain.model.Product;
@@ -23,7 +23,7 @@ public class SearchProductsUseCase {
 
     private final SearchProvider<Partial<Product>, ProductQuery> searchProvider;
 
-    private final SpringAuthenticationAdapter authService;
+    private final AuthenticationAdapter authService;
 
     private final ProductAuthorizationPort authorizationPort;
 

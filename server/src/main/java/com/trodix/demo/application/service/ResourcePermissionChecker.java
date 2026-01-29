@@ -1,8 +1,8 @@
 package com.trodix.demo.application.service;
 
-import com.trodix.demo.adapter.in.dto.PermissionStatus;
-import com.trodix.demo.adapter.in.dto.ResourceInfo;
-import com.trodix.demo.adapter.in.dto.ResourcePermissionStatus;
+import com.trodix.demo.application.model.PermissionStatusInfo;
+import com.trodix.demo.application.model.ResourceInfo;
+import com.trodix.demo.application.model.ResourcePermissionInfo;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientReadRequest;
@@ -26,7 +26,7 @@ public class ResourcePermissionChecker {
      * @param directPermissions Set of direct permissions (format: "resourceType:resourceId#relation")
      * @return Map with the status of each relation
      */
-    public Map<String, PermissionStatus> checkResourcePermissions(
+    public Map<String, PermissionStatusInfo> checkResourcePermissions(
         String username,
         String resourceType,
         String resourceId,
@@ -36,7 +36,7 @@ public class ResourcePermissionChecker {
         String user = "user:" + username;
         String object = resourceType + ":" + resourceId;
 
-        Map<String, PermissionStatus> result = new HashMap<>();
+        Map<String, PermissionStatusInfo> result = new HashMap<>();
 
         for (String relation : relations) {
             try {
@@ -49,12 +49,12 @@ public class ResourcePermissionChecker {
                 boolean hasPermission = fgaClient.check(checkRequest).get().getAllowed();
 
                 if (!hasPermission) {
-                    result.put(relation, new PermissionStatus(false, false));
+                    result.put(relation, new PermissionStatusInfo(false, false));
                 } else {
                     // Check if it's a direct permission
                     String permissionKey = object + "#" + relation;
                     boolean isDirect = directPermissions.contains(permissionKey);
-                    result.put(relation, new PermissionStatus(true, isDirect));
+                    result.put(relation, new PermissionStatusInfo(true, isDirect));
                 }
             } catch (Exception e) {
                 throw new RuntimeException("Error checking permission " + relation + " on " + object, e);
@@ -74,7 +74,7 @@ public class ResourcePermissionChecker {
      * @param directPermissions Set of direct permissions
      * @return List of ResourcePermissionStatus
      */
-    public List<ResourcePermissionStatus> checkMultipleResources(
+    public List<ResourcePermissionInfo> checkMultipleResources(
         String username,
         String resourceType,
         List<ResourceInfo> resources,
@@ -83,7 +83,7 @@ public class ResourcePermissionChecker {
     ) {
         return resources.stream()
             .map(resource -> {
-                Map<String, PermissionStatus> permissions = checkResourcePermissions(
+                Map<String, PermissionStatusInfo> permissions = checkResourcePermissions(
                     username,
                     resourceType,
                     resource.id(),
@@ -91,7 +91,7 @@ public class ResourcePermissionChecker {
                     directPermissions
                 );
 
-                return new ResourcePermissionStatus(
+                return new ResourcePermissionInfo(
                     resourceType,
                     resource.id(),
                     resource.name(),

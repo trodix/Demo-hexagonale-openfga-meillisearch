@@ -1,6 +1,6 @@
 package com.trodix.demo.application.usecase;
 
-import com.trodix.demo.adapter.in.dto.AddPermissionRequest;
+import com.trodix.demo.application.model.PermissionCommand;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.errors.FgaApiValidationError;
@@ -19,8 +19,8 @@ public class RemovePermissionUseCase {
 
     private final OpenFgaClient fgaClient;
 
-    public void removePermission(AddPermissionRequest request) {
-        if ("tenant".equals(request.getObjectType()) && "admin".equals(request.getRelation())) {
+    public void removePermission(PermissionCommand command) {
+        if ("tenant".equals(command.objectType()) && "admin".equals(command.relation())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Cannot remove tenant admin permission - only super admin can do this"
@@ -28,12 +28,12 @@ public class RemovePermissionUseCase {
         }
 
         try {
-            String user = "user:" + request.getUsername();
-            String object = request.getObjectType() + ":" + request.getObjectId();
+            String user = "user:" + command.username();
+            String object = command.objectType() + ":" + command.objectId();
 
             ClientTupleKeyWithoutCondition tuple = new ClientTupleKeyWithoutCondition()
                     .user(user)
-                    .relation(request.getRelation())
+                    .relation(command.relation())
                     ._object(object);
 
             fgaClient.deleteTuples(List.of(tuple)).get();
@@ -42,7 +42,7 @@ public class RemovePermissionUseCase {
                 FgaApiValidationError fgaError = (FgaApiValidationError) e.getCause();
                 if (fgaError.getMessage() != null && fgaError.getMessage().contains("did not exist")) {
                     log.debug("Tuple does not exist, ignoring: user={}, object={}, relation={}",
-                        request.getUsername(), request.getObjectId(), request.getRelation());
+                        command.username(), command.objectId(), command.relation());
                     return;
                 }
             }
